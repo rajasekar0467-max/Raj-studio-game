@@ -243,16 +243,20 @@ class UltimateDriveSimulator {
   }
 
   initWebGL() {
-    try {
-  this.renderer = new THREE.WebGLRenderer({
-    canvas: this.canvas,
-    antialias: true,
-    powerPreference: 'high-performance'
-  });
-} catch (err) {
-  document.getElementById('webgl-error').classList.remove('hidden');
-  throw err;
-    }
+  try {
+    this.renderer = new THREE.WebGLRenderer({
+      canvas: this.canvas,
+      antialias: true,
+      powerPreference: 'high-performance'
+    });
+  } catch (err) {
+    document.getElementById('webgl-error').classList.remove('hidden');
+    throw err;
+  }
+
+  this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+  // ... rest of the method unchanged ...
+  this.updateViewportSize();
   }
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
