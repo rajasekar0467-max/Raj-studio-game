@@ -119,7 +119,7 @@ ctx.fillRect(0, 0, 512, 512);
 // Subtle asphalt grain
 for (let i = 0; i < 9000; i++) {
 const shade = 22 + Math.floor(Math.random() * 24);
-ctx.fillStyle = rgb(${shade},${shade},${shade + 2});
+  ctx.fillStyle = `rgb(${shade}, ${shade}, ${shade + 2})`;
 ctx.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
 }
 
