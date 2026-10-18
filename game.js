@@ -9,17 +9,17 @@ import { buildProceduralBMW, loadExternalGLBVehicle } from './carBuilder.js';
 const UI = {
   loading: 'loading-screen', progress: 'progress-fill',
   glError: 'webgl-error', glErrorMsg: 'webgl-error-msg',
-  menu: 'menu-screen', hud: 'hud',
-  start: 'btn-start', cont: 'btn-continue', skip: 'btn-skip-intro', pause: 'btn-pause',
-  camBtn: 'btn-camera', lightsBtn: 'btn-lights', audioBtn: 'btn-audio', gfxBtn: 'btn-gfx',
-  paint: 'sel-paint', glbUrl: 'glb-url', glbLoad: 'btn-load-glb',
-  time: 'sel-time', weather: 'sel-weather', spawn: 'sel-spawn',
-  preset: 'sel-preset', res: 'rng-res', fov: 'rng-fov', steer: 'rng-steer', assist: 'sel-assist',
-  audioMode: 'sel-audio', exhaust: 'sel-exhaust', volume: 'rng-volume',
-  resLabel: 'lbl-res', fovLabel: 'lbl-fov', steerLabel: 'lbl-steer', volLabel: 'lbl-volume',
-  speed: 'hud-speed', rpm: 'hud-rpm', gear: 'hud-gear', fps: 'hud-fps',
-  zone: 'hud-zone', cam: 'hud-cam', info: 'hud-info',
-  left: 'btn-left', right: 'btn-right', throttle: 'btn-throttle', brake: 'btn-brake', pbrake: 'btn-pbrake'
+  menu: 'main-menu', hud: 'driving-hud', barTop: 'cinematic-bar-top', barBottom: 'cinematic-bar-bottom',
+  start: 'btn-start-drive', cont: 'btn-continue-drive', skip: 'btn-skip-intro',
+  pause: 'btn-hud-pause', camBtn: 'btn-hud-camera', lightsBtn: 'btn-hud-lights',
+  audioBtn: 'btn-hud-sound', gfxBtn: 'btn-hud-gfx',
+  glbUrl: 'input-glb-url', glbLoad: 'btn-load-glb',
+  res: 'slider-res', fov: 'slider-fov', steer: 'slider-sens', volume: 'slider-vol',
+  resLabel: 'lbl-res-scale', fovLabel: 'lbl-fov', steerLabel: 'lbl-sens', volLabel: 'lbl-vol',
+  speed: 'hud-speed', rpm: 'hud-rpm', gear: 'hud-gear', fps: 'hud-fps', rpmBar: 'rpm-bar-fill',
+  zone: 'zone-label', info: 'hud-env-badge', menuInfo: 'menu-env-summary',
+  left: 'touch-left', right: 'touch-right', throttle: 'touch-throttle',
+  brake: 'touch-brake', pbrake: 'touch-handbrake'
 };
 
 const $ = (id) => document.getElementById(id);
@@ -214,17 +214,16 @@ function createSmokeTexture() {
 // 3. ENVIRONMENT PRESETS
 // ============================================================================
 const TIME_PRESETS = {
-  morning: { sky: 0x9fc3dd, sun: 0xfff0d8, sunI: 2.8, sunPos: [-90, 90, 70], hemi: 0.9, exp: 1.0, win: 0.0, env: 1.0, fog: 0.0018, label: 'MORNING' },
-  sunset:  { sky: 0x7a4f52, sun: 0xffb870, sunI: 2.6, sunPos: [120, 45, 80], hemi: 0.65, exp: 1.05, win: 0.35, env: 0.8, fog: 0.0022, label: 'SUNSET' },
-  night:   { sky: 0x05070d, sun: 0x6f8cff, sunI: 0.35, sunPos: [-60, 80, -40], hemi: 0.22, exp: 1.25, win: 1.0, env: 0.25, fog: 0.0026, label: 'NIGHT' }
+  morning: { sky: 0x9fc3dd, sun: 0xfff0d8, sunI: 2.8, sunPos: [-90, 90, 70], hemi: 0.9, exp: 1.0, win: 0.0, env: 1.0, fog: 0.0018, label: 'MORNING', menu: 'MORNING' },
+  sunset:  { sky: 0x7a4f52, sun: 0xffb870, sunI: 2.6, sunPos: [120, 45, 80], hemi: 0.65, exp: 1.05, win: 0.35, env: 0.8, fog: 0.0022, label: 'SUNSET', menu: 'GOLDEN HOUR' },
+  night:   { sky: 0x05070d, sun: 0x6f8cff, sunI: 0.35, sunPos: [-60, 80, -40], hemi: 0.22, exp: 1.25, win: 1.0, env: 0.25, fog: 0.0026, label: 'NIGHT', menu: 'NIGHT CITY' }
 };
 const WEATHER_PRESETS = {
-  clear: { dark: 1.0, fogMul: 1.0, rain: 0, rough: 0.65, metal: 0.15, grip: 1.0, label: 'CLEAR' },
-  rain:  { dark: 0.75, fogMul: 1.8, rain: 0.5, rough: 0.3, metal: 0.35, grip: 0.8, label: 'RAIN' },
-  storm: { dark: 0.5, fogMul: 3.2, rain: 1.0, rough: 0.2, metal: 0.4, grip: 0.65, label: 'STORM' }
+  clear:      { dark: 1.0, fogMul: 1.0, rain: 0, rough: 0.65, metal: 0.15, grip: 1.0, label: 'CLEAR' },
+  light_rain: { dark: 0.75, fogMul: 1.8, rain: 0.5, rough: 0.3, metal: 0.35, grip: 0.8, label: 'LIGHT RAIN' },
+  heavy_rain: { dark: 0.5, fogMul: 3.2, rain: 1.0, rough: 0.2, metal: 0.4, grip: 0.65, label: 'STORM' }
 };
-const PAINTS = { black: 0x0b0d12, grey: 0x8d9096, blue: 0x2a2f8f };
-const ZONE_T = { city: 0.08, mountain: 0.47, coast: 0.83 };
+const ZONE_T = { city: 0.08, highway: 0.47, coast: 0.83 };
 const GEAR_MAX_KMH = [55, 95, 140, 190, 240, 300];
 
 // ============================================================================
@@ -248,7 +247,8 @@ class UltimateDriveSimulator {
       cameraIndex: 0, // 0: Chase, 1: Close Chase, 2: Hood, 3: Cockpit
       headlightsOn: true,
       introTimer: 0,
-      started: false
+      started: false,
+      spawn: 'city'
     };
 
     this.input = { left: false, right: false, throttle: false, brake: false, handbrake: false };
@@ -625,55 +625,36 @@ class UltimateDriveSimulator {
     this.carRig = buildProceduralBMW();
     this.carRig.root.rotation.order = 'YXZ';
     this.scene.add(this.carRig.root);
-    this.attachHeadlights();
-  }
-
-  attachHeadlights() {
-    if (this.headlight) {
-      if (this.headlight.parent) this.headlight.parent.remove(this.headlight);
-      if (this.headlight.target.parent) this.headlight.target.parent.remove(this.headlight.target);
-    }
-    this.headlight = new THREE.SpotLight(0xfff2dd, 120, 90, 0.5, 0.55, 1.2);
-    this.headlight.position.set(0, 0.8, 2.0);
-    this.headlight.target.position.set(0, 0.4, 22);
-    this.carRig.root.add(this.headlight);
-    this.carRig.root.add(this.headlight.target);
     this.setHeadlights(this.state.headlightsOn);
   }
 
   setHeadlights(on_) {
     this.state.headlightsOn = on_;
-    if (this.headlight) this.headlight.visible = on_;
-    if (typeof this.carRig.setHeadlights === 'function') this.carRig.setHeadlights(on_);
+    const hb = $(UI.lightsBtn);
+    if (hb) hb.classList.toggle('active', on_);
+    const r = this.carRig;
+    if (!r) return;
+    if (r.lights) {
+      r.lights.headSpotL.intensity = on_ ? 28 : 0;
+      r.lights.headSpotR.intensity = on_ ? 28 : 0;
+    }
+    if (r.materials && r.materials.headlightMat) r.materials.headlightMat.emissiveIntensity = on_ ? 3.5 : 0.4;
   }
 
   setPaint(hex) {
-    if (typeof this.carRig.setPaint === 'function') {
-      this.carRig.setPaint(hex);
-      return;
-    }
-    this.carRig.root.traverse((o) => {
-      const m = o.isMesh ? o.material : null;
-      if (m && !Array.isArray(m) && m.color && (m.userData?.paint || /paint|body/i.test(m.name || ''))) {
-        m.color.setHex(hex);
-      }
-    });
+    const m = this.carRig.materials && this.carRig.materials.bodyPaintMat;
+    if (m) m.color.set(hex);
   }
 
-  async loadGLB(url) {
+  loadGLB(url) {
     if (!url) return;
-    try {
-      const result = await loadExternalGLBVehicle(url);
-      if (!result) return;
-      const rig = result.root ? result : { root: result };
-      this.scene.remove(this.carRig.root);
-      this.carRig = rig;
-      this.carRig.root.rotation.order = 'YXZ';
-      this.scene.add(this.carRig.root);
-      this.attachHeadlights();
-    } catch (e) {
-      console.warn('GLB load failed (check the URL and that the server allows CORS):', e);
-    }
+    const b = $(UI.glbLoad);
+    loadExternalGLBVehicle(url, this.carRig, (msg) => {
+      console.log(msg);
+      if (!b) return;
+      b.textContent = /fail/i.test(msg) ? 'Failed' : /success/i.test(msg) ? 'Loaded' : 'Loading...';
+      setTimeout(() => { b.textContent = 'Load GLB'; }, 2500);
+    });
   }
 
   buildWeatherAndParticles() {
@@ -746,7 +727,7 @@ class UltimateDriveSimulator {
     }
 
     // Lightning flashes in storms
-    if (this.state.weather === 'storm' && Math.random() < 0.004) this.flash = 1;
+    if (this.state.weather === 'heavy_rain' && Math.random() < 0.004) this.flash = 1;
     this.flash = Math.max(0, this.flash - dt * 3.5);
     this.ambientLight.intensity = this.baseHemi + this.flash * 3.0;
 
@@ -800,9 +781,20 @@ class UltimateDriveSimulator {
     this.rain.material.opacity = 0.25 + W.rain * 0.35;
     this.rain.geometry.setDrawRange(0, Math.floor(this.rainCount * W.rain) * 2);
 
-    if (this.state.timeOfDay === 'night' || this.state.weather === 'storm') this.setHeadlights(true);
+    if (this.state.timeOfDay === 'night' || this.state.weather === 'heavy_rain') this.setHeadlights(true);
 
+    this.updateSummary();
+  }
+
+  updateSummary() {
+    const T = TIME_PRESETS[this.state.timeOfDay] || TIME_PRESETS.sunset;
+    const W = WEATHER_PRESETS[this.state.weather] || WEATHER_PRESETS.clear;
     setText(UI.info, `${T.label} | ${W.label}`);
+    setText(UI.menuInfo, `${T.menu} | ${W.label} | ${this.state.preset.toUpperCase()} PRESET`);
+  }
+
+  syncChips(selector, attr, value) {
+    document.querySelectorAll(selector).forEach((b) => b.classList.toggle('active', b.dataset[attr] === value));
   }
 
   applyGraphicsPreset(preset) {
@@ -814,6 +806,14 @@ class UltimateDriveSimulator {
     }[preset] || { res: 1.0, shadow: true, map: 1024 };
 
     this.state.resScale = cfg.res;
+    this.carRig.root.traverse((o) => {
+      const m = o.isMesh ? o.material : null;
+      if (m && m.isMeshPhysicalMaterial && (m.userData.t0 ?? m.transmission) > 0) {
+        if (m.userData.t0 === undefined) m.userData.t0 = m.transmission;
+        const t = preset === 'high' ? m.userData.t0 : 0;
+        if (m.transmission !== t) { m.transmission = t; m.needsUpdate = true; }
+      }
+    });
     this.sunLight.castShadow = cfg.shadow;
     if (this.sunLight.shadow.mapSize.x !== cfg.map) {
       if (this.sunLight.shadow.map) { this.sunLight.shadow.map.dispose(); this.sunLight.shadow.map = null; }
@@ -822,6 +822,10 @@ class UltimateDriveSimulator {
     this.updateViewportSize();
     setText(UI.gfxBtn, `GFX: ${preset.toUpperCase()}`);
     setText(UI.resLabel, `${Math.round(cfg.res * 100)}%`);
+    const sl = $(UI.res);
+    if (sl) sl.value = String(cfg.res);
+    this.syncChips('#preset-select .chip-btn', 'preset', preset);
+    this.updateSummary();
   }
 
   teleportToZone(zone) {
@@ -914,20 +918,35 @@ class UltimateDriveSimulator {
     this.audio.init();
     this.state.started = true;
     this.state.introTimer = 0;
-    this.state.mode = skipIntro ? 'DRIVING' : 'INTRO';
+    show(UI.menu, false);
+    show(UI.cont, true);
+    if (skipIntro) {
+      this.endIntro();
+    } else {
+      this.state.mode = 'INTRO';
+      show(UI.barTop, true);
+      show(UI.barBottom, true);
+      show(UI.hud, false);
+    }
+  }
+
+  endIntro() {
+    this.state.mode = 'DRIVING';
+    show(UI.barTop, false);
+    show(UI.barBottom, false);
     show(UI.menu, false);
     show(UI.hud, true);
-    show(UI.cont, true);
   }
 
   togglePause() {
-    if (!this.state.started) return;
     if (this.state.mode === 'DRIVING') {
       this.state.mode = 'MENU';
       show(UI.menu, true);
-    } else {
+      show(UI.hud, false);
+    } else if (this.state.mode === 'MENU' && this.state.started) {
       this.state.mode = 'DRIVING';
       show(UI.menu, false);
+      show(UI.hud, true);
     }
   }
 
@@ -935,10 +954,35 @@ class UltimateDriveSimulator {
     this.state.cameraIndex = (this.state.cameraIndex + 1) % 4;
   }
 
+  setAudioEnabled(v) {
+    this.audio.init();
+    this.audio.enabled = v;
+    const b = $(UI.audioBtn);
+    if (b) b.classList.toggle('active', v);
+    this.syncChips('#audio-toggle-group .chip-btn', 'audio', v ? 'on' : 'off');
+  }
+
+  bindChips(selector, attr, fn) {
+    document.querySelectorAll(selector).forEach((btn) => {
+      btn.addEventListener('click', () => {
+        btn.parentElement.querySelectorAll('.chip-btn').forEach((b) => b.classList.toggle('active', b === btn));
+        fn(btn.dataset[attr]);
+      });
+    });
+  }
+
   bindUIAndControls() {
-    // Buttons
+    // Menu tabs
+    const tabs = document.querySelectorAll('.tab-btn');
+    tabs.forEach((t) => t.addEventListener('click', () => {
+      tabs.forEach((o) => o.classList.toggle('active', o === t));
+      document.querySelectorAll('.menu-panel').forEach((p) => p.classList.toggle('hidden', p.id !== t.dataset.panel));
+    }));
+    if (tabs[0]) tabs[0].classList.add('active');
+
+    // Main buttons
     on(UI.start, 'click', () => {
-      this.teleportToZone('city');
+      this.teleportToZone(this.state.spawn);
       this.startGame(false);
     });
     on(UI.cont, 'click', () => {
@@ -947,30 +991,30 @@ class UltimateDriveSimulator {
       show(UI.menu, false);
       show(UI.hud, true);
     });
-    on(UI.skip, 'click', () => { this.state.mode = 'DRIVING'; });
+    on(UI.skip, 'click', () => { if (this.state.mode === 'INTRO') this.endIntro(); });
     on(UI.pause, 'click', () => this.togglePause());
     on(UI.camBtn, 'click', () => this.cycleCamera());
     on(UI.lightsBtn, 'click', () => this.setHeadlights(!this.state.headlightsOn));
-    on(UI.audioBtn, 'click', () => {
-      this.audio.init();
-      this.audio.enabled = !this.audio.enabled;
-      setText(UI.audioBtn, this.audio.enabled ? 'AUDIO' : 'MUTED');
-    });
+    on(UI.audioBtn, 'click', () => this.setAudioEnabled(!this.audio.enabled));
     on(UI.gfxBtn, 'click', () => {
       const order = ['low', 'medium', 'high'];
       this.applyGraphicsPreset(order[(order.indexOf(this.state.preset) + 1) % 3]);
     });
     on(UI.glbLoad, 'click', () => { const el = $(UI.glbUrl); if (el) this.loadGLB(el.value.trim()); });
 
-    // Menu options
-    bindValue(UI.paint, (v) => this.setPaint(PAINTS[v] ?? PAINTS.black));
-    bindValue(UI.time, (v) => { this.state.timeOfDay = v; this.applyEnvironmentState(); });
-    bindValue(UI.weather, (v) => { this.state.weather = v; this.applyEnvironmentState(); });
-    bindValue(UI.spawn, (v) => this.teleportToZone(v));
-    bindValue(UI.preset, (v) => this.applyGraphicsPreset(v));
+    // Option chips (they use data-* attributes in index.html)
+    this.bindChips('.chip-btn[data-paint]', 'paint', (v) => this.setPaint(v));
+    this.bindChips('#time-select .chip-btn', 'time', (v) => { this.state.timeOfDay = v; this.applyEnvironmentState(); });
+    this.bindChips('#weather-select .chip-btn', 'weather', (v) => { this.state.weather = v; this.applyEnvironmentState(); });
+    this.bindChips('#spawn-select .chip-btn', 'spawn', (v) => { this.state.spawn = v; this.teleportToZone(v); });
+    this.bindChips('#preset-select .chip-btn', 'preset', (v) => this.applyGraphicsPreset(v));
+    this.bindChips('#assist-select .chip-btn', 'assist', (v) => { this.state.assistMode = v; });
+    this.bindChips('#audio-toggle-group .chip-btn', 'audio', (v) => this.setAudioEnabled(v === 'on'));
+    this.bindChips('#exhaust-select .chip-btn', 'exhaust', (v) => { this.audio.sportExhaust = v === 'sport'; });
+
+    // Sliders
     bindValue(UI.res, (v) => {
-      let r = parseFloat(v); if (r > 3) r /= 100;
-      this.state.resScale = THREE.MathUtils.clamp(r || 1, 0.4, 1.5);
+      this.state.resScale = THREE.MathUtils.clamp(parseFloat(v) || 1, 0.4, 1.5);
       this.updateViewportSize();
       setText(UI.resLabel, `${Math.round(this.state.resScale * 100)}%`);
     });
@@ -982,21 +1026,17 @@ class UltimateDriveSimulator {
       this.state.steerSens = THREE.MathUtils.clamp(parseFloat(v) || 1, 0.4, 2);
       setText(UI.steerLabel, `${this.state.steerSens.toFixed(1)}x`);
     });
-    bindValue(UI.assist, (v) => { this.state.assistMode = v; });
-    bindValue(UI.audioMode, (v) => { this.audio.init(); this.audio.enabled = !(v === 'off' || v === 'muted'); });
-    bindValue(UI.exhaust, (v) => { this.audio.sportExhaust = v === 'sport'; });
     bindValue(UI.volume, (v) => {
-      let vol = parseFloat(v); if (vol > 1) vol /= 100;
-      this.audio.masterVolume = THREE.MathUtils.clamp(vol || 0, 0, 1);
+      this.audio.masterVolume = THREE.MathUtils.clamp((parseFloat(v) || 0) / 100, 0, 1);
       setText(UI.volLabel, `${Math.round(this.audio.masterVolume * 100)}%`);
     });
 
-    // Touch / on-screen hold buttons
+    // Touch hold buttons
     const hold = (id, key) => {
       const el = $(id);
       if (!el) return;
-      const down = (e) => { e.preventDefault(); this.audio.init(); this.input[key] = true; };
-      const up = (e) => { e.preventDefault(); this.input[key] = false; };
+      const down = (e) => { e.preventDefault(); this.audio.init(); this.input[key] = true; el.classList.add('pressed'); };
+      const up = (e) => { e.preventDefault(); this.input[key] = false; el.classList.remove('pressed'); };
       el.addEventListener('pointerdown', down);
       el.addEventListener('pointerup', up);
       el.addEventListener('pointerleave', up);
@@ -1022,7 +1062,7 @@ class UltimateDriveSimulator {
         this.input[keyMap[e.code]] = true;
       } else if (e.code === 'KeyC') this.cycleCamera();
       else if (e.code === 'KeyL') this.setHeadlights(!this.state.headlightsOn);
-      else if (e.code === 'KeyM') { this.audio.enabled = !this.audio.enabled; }
+      else if (e.code === 'KeyM') this.setAudioEnabled(!this.audio.enabled);
       else if (e.code === 'KeyP' || e.code === 'Escape') this.togglePause();
       else if (e.code === 'KeyR') this.resetToRoad();
     });
@@ -1031,6 +1071,7 @@ class UltimateDriveSimulator {
     });
     window.addEventListener('blur', () => {
       Object.keys(this.input).forEach((k) => { this.input[k] = false; });
+      document.querySelectorAll('.touch-btn.pressed').forEach((b) => b.classList.remove('pressed'));
     });
   }
 
@@ -1161,7 +1202,7 @@ class UltimateDriveSimulator {
     const rollT = THREE.MathUtils.clamp(p.angularVel * vlF * 0.0018, -0.08, 0.08);
     p.pitch += (pitchT - p.pitch) * Math.min(1, dt * 5);
     p.roll += (rollT - p.roll) * Math.min(1, dt * 5);
-    p.wheelRotation += (vlF * dt) / 0.34;
+    p.wheelRotation += (vlF * dt) / 0.36;
   }
 
   updateTraffic(dt) {
@@ -1180,13 +1221,19 @@ class UltimateDriveSimulator {
     const root = this.carRig.root;
     root.position.copy(p.pos);
     root.rotation.set(p.pitch, p.heading, p.roll);
-    if (Array.isArray(this.carRig.wheels)) {
-      this.carRig.wheels.forEach((w) => { w.rotation.x = p.wheelRotation; });
+    const rig = this.carRig;
+    if (Array.isArray(rig.wheels)) {
+      rig.wheels.forEach((w) => {
+        w.spinGroup.rotation.x = p.wheelRotation;
+        if (w.isFront) w.steerPivot.rotation.y = p.steerAngle;
+      });
     }
-    if (Array.isArray(this.carRig.frontWheelPivots)) {
-      this.carRig.frontWheelPivots.forEach((w) => { w.rotation.y = p.steerAngle; });
+    if (rig.steeringWheelGroup) rig.steeringWheelGroup.rotation.z = -p.steerAngle * 4;
+    if (rig.materials) {
+      rig.materials.taillightMat.emissiveIntensity = this.input.brake ? 4 : 1.2;
+      rig.materials.reverseLightMat.emissiveIntensity = p.speedKmh < -1 ? 2.5 : 0;
     }
-    if (typeof this.carRig.setBrakeLights === 'function') this.carRig.setBrakeLights(this.input.brake);
+    if (rig.lights) rig.lights.tailPointLight.intensity = this.input.brake ? 3 : 1.2;
   }
 
   // --------------------------------------------------------------------------
@@ -1223,7 +1270,7 @@ class UltimateDriveSimulator {
       } else {
         const off = idx === 2
           ? p.pos.clone().addScaledVector(f, 1.1).add(new THREE.Vector3(0, 1.18, 0))
-          : p.pos.clone().addScaledVector(f, 0.05).addScaledVector(l, 0.36).add(new THREE.Vector3(0, 1.2, 0));
+          : p.pos.clone().addScaledVector(f, -0.2).addScaledVector(l, -0.36).add(new THREE.Vector3(0, 1.2, 0));
         this.camPos.copy(off);
         this.camLook.copy(off).addScaledVector(f, 20);
         // keep the look target following the car's pitch/roll very slightly
@@ -1249,7 +1296,9 @@ class UltimateDriveSimulator {
     const gear = p.speedKmh < -1 ? 'R' : Math.abs(p.speedKmh) < 1 && !this.input.throttle ? 'N' : String(p.gear);
     setText(UI.gear, gear);
     setText(UI.fps, `${this.fps} FPS`);
-    setText(UI.cam, `CAM: ${['CHASE', 'CLOSE', 'HOOD', 'COCKPIT'][this.state.cameraIndex]}`);
+    setText(UI.camBtn, `CAM: ${['CHASE', 'CLOSE', 'HOOD', 'COCKPIT'][this.state.cameraIndex]}`);
+    const bar = $(UI.rpmBar);
+    if (bar) bar.style.width = `${(p.rpm / 7200 * 100).toFixed(1)}%`;
     const si = this.nearestSample(p.pos);
     setText(UI.zone, this.zoneName(this.roadSamples[si].t));
   }
@@ -1271,7 +1320,7 @@ class UltimateDriveSimulator {
 
     if (this.state.mode === 'INTRO') {
       this.state.introTimer += dt;
-      if (this.state.introTimer > 6) this.state.mode = 'DRIVING';
+      if (this.state.introTimer > 6) this.endIntro();
     }
 
     if (this.state.mode === 'DRIVING') this.updatePhysics(dt);
