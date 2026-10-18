@@ -1352,8 +1352,18 @@ function boot() {
     window.__game = new UltimateDriveSimulator();
   } catch (err) {
     console.error('Failed to start simulator:', err);
+    const title = document.querySelector('#webgl-error h2');
+    if (title) title.textContent = 'Game failed to start';
+    const el = $(UI.glErrorMsg);
+    if (el) {
+      const stack = String((err && err.stack) || '').split('\n').slice(0, 6).join('\n');
+      el.style.whiteSpace = 'pre-wrap';
+      el.style.fontSize = '11px';
+      el.style.wordBreak = 'break-all';
+      el.textContent = (err && err.message ? err.message : String(err)) + '\n\n' + stack;
+    }
     show(UI.glError, true);
-    setText(UI.glErrorMsg, 'Failed to start: ' + (err && err.message ? err.message : err));
+    show(UI.loading, false);
   }
 }
 
