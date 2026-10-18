@@ -1,7 +1,8 @@
-
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  base: '/Raj-studio-game/'
+  // Relative base works on Netlify (site root) AND GitHub Pages (/Raj-studio-game/)
+  base: './'
 });
+
 
