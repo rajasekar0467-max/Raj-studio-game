@@ -2164,3 +2164,124 @@ if (document.readyState === 'loading') {
 } else {
   boot();
 }
+/* ==========================================================================
+   HUD upgrade: glass panels, speedometer dial, icon sprites, paint swatches.
+   Imported from game.js. Selectors are prefixed with "html body" so they win
+   over style.css regardless of stylesheet order. Asset URLs are public files
+   (public/assets/...), which Vite rewrites for the configured base path.
+   ========================================================================== */
+
+/* ---- Glass panels (9-slice so any size keeps crisp corners) ---- */
+html body .instrument-cluster,
+html body .hud-top-center,
+html body .minimap-wrapper {
+  background: none;
+  border: 0;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  isolation: isolate;
+}
+html body .hud-top-center,
+html body .minimap-wrapper { position: relative; }
+html body .instrument-cluster::before,
+html body .hud-top-center::before,
+html body .minimap-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border: 14px solid transparent;
+  border-image: url('/assets/ui/hud_glass_panel.png') 44 fill / 14px stretch;
+}
+
+/* ---- Instrument cluster with speedometer dial ---- */
+html body .instrument-cluster {
+  --dial: 168px;
+  width: calc(var(--dial) + 84px);
+  padding: 6px 12px 9px;
+  display: flex;
+  flex-direction: column;
+}
+.dial-wrap {
+  position: relative;
+  flex: none;
+  width: var(--dial);
+  height: calc(var(--dial) * 0.547);
+  margin: 0 auto;
+  background: url('/assets/ui/speedometer_dial.png') no-repeat top center / var(--dial) var(--dial);
+}
+.dial-needle {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--dial) * 0.0476);
+  width: max(3px, calc(var(--dial) * 0.024));
+  height: calc(var(--dial) * 0.333);
+  margin-left: calc(var(--dial) * -0.012);
+  transform-origin: 50% 100%;
+  transform: rotate(-65.4deg);
+  background: linear-gradient(to top, transparent 0 66%, #00a8ff 66%, #a8e0ff 100%);
+  border-radius: 2px;
+  filter: drop-shadow(0 0 3px rgba(0, 168, 255, 0.85));
+  transition: transform 80ms linear;
+  will-change: transform;
+}
+/* The readout row is flattened so gear / speed / rpm can be placed against the dial */
+html body .instrument-cluster .cluster-readout { display: contents; }
+html body .instrument-cluster .speed-box {
+  position: absolute;
+  left: 50%;
+  top: calc(6px + var(--dial) * 0.235);
+  transform: translateX(-50%);
+  text-align: center;
+  line-height: 1;
+}
+html body .instrument-cluster #hud-speed { font-size: 1.7rem; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); }
+html body .instrument-cluster .speed-box small { display: block; margin-top: 2px; }
+html body .instrument-cluster .gear-box,
+html body .instrument-cluster .rpm-text {
+  position: absolute;
+  top: calc(6px + var(--dial) * 0.36);
+  pointer-events: none;
+}
+html body .instrument-cluster .gear-box { left: 12px; font-size: 1.25rem; padding: 2px 9px; }
+html body .instrument-cluster .rpm-text { right: 12px; line-height: 1.7; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); }
+html body .instrument-cluster .rpm-bar-container { margin: 8px 0 0; }
+html body .hud-top-center { padding: 8px 18px; white-space: nowrap; }
+html body .hud-top-center span { white-space: nowrap; }
+html body #hud-fps, html body #hud-env-badge { text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); }
+
+@media (max-height: 450px) {
+  html body .instrument-cluster { --dial: 138px; bottom: 6px; padding: 5px 10px 7px; }
+}
+
+/* ---- Icon sprite (game_icons.png = 4 icons: nitro, camera, weather, reset) ---- */
+#btn-hud-camera::before,
+#btn-hud-reset::before,
+#hud-env-badge::before {
+  content: '';
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin: -4px 4px -4px -3px;
+  vertical-align: middle;
+  background: url('/assets/ui/game_icons.png') no-repeat 0 0 / 80px 20px;
+}
+#btn-hud-camera::before { background-position: -20px 0; }
+#hud-env-badge::before { background-position: -40px 0; }
+#btn-hud-reset::before { background-position: -60px 0; }
+
+/* ---- Paint swatches (paint_swatch_atlas.png = 3 x 2 colour cells) ---- */
+.chip-btn[data-paint]::before {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+  vertical-align: -2px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: var(--sw-bg, #777);
+}
+.chip-btn.has-swatch[data-paint]::before {
+  background: url('/assets/textures/paint_swatch_atlas.png') var(--sw-x, 0%) var(--sw-y, 0%) / 300% 204.8% no-repeat;
+}
