@@ -22,9 +22,19 @@ const UI = {
   brake: 'touch-brake', pbrake: 'touch-handbrake'
 };
 
-const $ = (id) => document.getElementById(id);
+const _els = new Map();
+const $ = (id) => {
+  let e = _els.get(id);
+  if (e === undefined) { e = document.getElementById(id); _els.set(id, e); }
+  return e;
+};
+const _txt = new Map();
 const on = (id, ev, fn, opts) => { const el = $(id); if (el) el.addEventListener(ev, fn, opts); };
-const setText = (id, t) => { const el = $(id); if (el && el.textContent !== t) el.textContent = t; };
+const setText = (id, t) => {
+  if (_txt.get(id) === t) return;
+  const el = $(id);
+  if (el) { el.textContent = t; _txt.set(id, t); }
+};
 const show = (id, v) => { const el = $(id); if (el) el.classList.toggle('hidden', !v); };
 const bindValue = (id, fn) => {
   const el = $(id);
@@ -44,61 +54,77 @@ class AutomotiveAudioEngine {
     this.masterVolume = 0.8;
     this.sportExhaust = true;
     this.initialized = false;
+    this.lastPop = 0;
+    this.shiftUntil = 0;
   }
 
   init() {
     if (this.initialized) return;
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      this.ctx = new AudioCtx();
+      const ctx = (this.ctx = new AudioCtx());
 
-      this.masterGain = this.ctx.createGain();
+      this.masterGain = ctx.createGain();
       this.masterGain.gain.value = this.masterVolume * 0.28;
-      this.masterGain.connect(this.ctx.destination);
+      this.masterGain.connect(ctx.destination);
 
-      // Inline-6 Cylinder Dual-Oscillator Synthesis
-      this.engineGain = this.ctx.createGain();
-      this.engineFilter = this.ctx.createBiquadFilter();
+      // Inline-6 style engine: saw + triangle fundamentals + square octave for bite
+      this.engineGain = ctx.createGain();
+      this.engineFilter = ctx.createBiquadFilter();
       this.engineFilter.type = 'lowpass';
       this.engineFilter.frequency.value = 380;
-
-      this.osc1 = this.ctx.createOscillator();
-      this.osc2 = this.ctx.createOscillator();
+      this.osc1 = ctx.createOscillator();
+      this.osc2 = ctx.createOscillator();
+      this.osc3 = ctx.createOscillator();
       this.osc1.type = 'sawtooth';
       this.osc2.type = 'triangle';
-
+      this.osc3.type = 'square';
+      const osc3Gain = ctx.createGain();
+      osc3Gain.gain.value = 0.1;
       this.osc1.connect(this.engineFilter);
       this.osc2.connect(this.engineFilter);
+      this.osc3.connect(osc3Gain);
+      osc3Gain.connect(this.engineFilter);
       this.engineFilter.connect(this.engineGain);
       this.engineGain.connect(this.masterGain);
-
       this.osc1.start();
       this.osc2.start();
+      this.osc3.start();
 
-      // Tire Squeal / Road Spray Noise Generator
-      const bufferSize = this.ctx.sampleRate * 1.5;
-      const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-      const output = noiseBuffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        output[i] = Math.random() * 2 - 1;
-      }
+      // Turbo whistle
+      this.turboOsc = ctx.createOscillator();
+      this.turboOsc.type = 'sine';
+      this.turboGain = ctx.createGain();
+      this.turboGain.gain.value = 0;
+      this.turboOsc.connect(this.turboGain);
+      this.turboGain.connect(this.masterGain);
+      this.turboOsc.start();
 
-      this.skidSource = this.ctx.createBufferSource();
-      this.skidSource.buffer = noiseBuffer;
-      this.skidSource.loop = true;
-
-      this.skidFilter = this.ctx.createBiquadFilter();
-      this.skidFilter.type = 'bandpass';
-      this.skidFilter.frequency.value = 1150;
-      this.skidFilter.Q.value = 3.5;
-
-      this.skidGain = this.ctx.createGain();
-      this.skidGain.gain.value = 0.0;
-
-      this.skidSource.connect(this.skidFilter);
-      this.skidFilter.connect(this.skidGain);
-      this.skidGain.connect(this.masterGain);
-      this.skidSource.start();
+      // Shared noise buffer -> tire, wind, brake squeal, exhaust crackle
+      const bufferSize = ctx.sampleRate * 1.5;
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const out = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) out[i] = Math.random() * 2 - 1;
+      const mkNoise = (type, freq, q) => {
+        const src = ctx.createBufferSource();
+        src.buffer = noiseBuffer;
+        src.loop = true;
+        const f = ctx.createBiquadFilter();
+        f.type = type;
+        f.frequency.value = freq;
+        f.Q.value = q;
+        const g = ctx.createGain();
+        g.gain.value = 0;
+        src.connect(f);
+        f.connect(g);
+        g.connect(this.masterGain);
+        src.start();
+        return { f, g };
+      };
+      this.skid = mkNoise('bandpass', 1150, 3.5);
+      this.wind = mkNoise('bandpass', 650, 0.5);
+      this.brakeN = mkNoise('bandpass', 2800, 7);
+      this.pop = mkNoise('bandpass', 170, 1.1);
 
       this.initialized = true;
     } catch (e) {
@@ -106,31 +132,66 @@ class AutomotiveAudioEngine {
     }
   }
 
-  update(rpm, throttle, slipAmount, speedKmh) {
+  popBurst(now) {
+    const g = this.pop.g.gain;
+    g.cancelScheduledValues(now);
+    g.setValueAtTime(0.45 + Math.random() * 0.4, now);
+    g.exponentialRampToValueAtTime(0.0001, now + 0.07);
+    this.lastPop = now;
+  }
+
+  // Called on every gear change: brief torque cut + exhaust pop on hard upshifts
+  shift(up, throttle) {
+    if (!this.initialized || !this.enabled || !this.ctx) return;
+    const now = this.ctx.currentTime;
+    this.shiftUntil = now + 0.14;
+    if (this.sportExhaust && up && throttle > 0.4) this.popBurst(now);
+  }
+
+  update(rpm, throttle, slipAmount, speedKmh, brake = 0) {
     if (!this.initialized || !this.ctx) return;
-    if (this.ctx.state === 'suspended' && this.enabled) {
-      this.ctx.resume();
-    }
+    if (this.ctx.state === 'suspended' && this.enabled) this.ctx.resume();
     const now = this.ctx.currentTime;
     if (!this.enabled) {
       this.masterGain.gain.setTargetAtTime(0, now, 0.05);
       return;
     }
-
     this.masterGain.gain.setTargetAtTime(this.masterVolume * 0.26, now, 0.05);
 
+    const dip = now < this.shiftUntil ? 0.35 : 1;
     const baseFreq = Math.max(28, (rpm / 60) * 1.5);
     this.osc1.frequency.setTargetAtTime(baseFreq, now, 0.03);
     this.osc2.frequency.setTargetAtTime(baseFreq * 0.5, now, 0.03);
+    this.osc3.frequency.setTargetAtTime(baseFreq * 2, now, 0.03);
 
     const exhaustMult = this.sportExhaust ? 1.55 : 0.9;
     const cutoff = 220 + (rpm / 7200) * 1400 * exhaustMult + throttle * 350;
     this.engineFilter.frequency.setTargetAtTime(cutoff, now, 0.04);
-    this.engineGain.gain.setTargetAtTime(0.4 + throttle * 0.45, now, 0.04);
+    this.engineGain.gain.setTargetAtTime((0.4 + throttle * 0.45) * dip, now, 0.03);
 
-    // Tire squeal when drifting or cornering hard at speed
+    // Turbo spool whistle under load
+    const turbo = throttle > 0.5 && rpm > 2500 ? 0.012 + 0.03 * (rpm / 7200) : 0;
+    this.turboOsc.frequency.setTargetAtTime(1800 + (rpm / 7200) * 3200, now, 0.08);
+    this.turboGain.gain.setTargetAtTime(turbo, now, 0.12);
+
+    // Wind + road noise rise with speed
+    const w = Math.min(0.22, Math.pow(speedKmh / 200, 1.5) * 0.25);
+    this.wind.g.gain.setTargetAtTime(w, now, 0.2);
+    this.wind.f.frequency.setTargetAtTime(400 + speedKmh * 4, now, 0.2);
+
+    // Brake squeal when braking hard from speed
+    const bq = brake && speedKmh > 25 ? Math.min(0.1, (speedKmh - 25) / 450) : 0;
+    this.brakeN.g.gain.setTargetAtTime(bq, now, 0.08);
+
+    // Tire squeal when drifting or cornering hard
     const squeal = speedKmh > 18 && slipAmount > 0.22 ? Math.min(0.65, (slipAmount - 0.22) * 1.2) : 0;
-    this.skidGain.gain.setTargetAtTime(squeal, now, 0.05);
+    this.skid.g.gain.setTargetAtTime(squeal, now, 0.05);
+
+    // Overrun crackle on throttle lift (sport exhaust)
+    if (this.sportExhaust && throttle < 0.05 && rpm > 3800 && speedKmh > 10 &&
+        now - this.lastPop > 0.09 && Math.random() < 0.18) {
+      this.popBurst(now);
+    }
   }
 }
 
@@ -198,6 +259,25 @@ function createBuildingFacadeTexture() {
   return tex;
 }
 
+function createPlainAsphaltTexture() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#1c1f24';
+  g.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 3500; i++) {
+    const sh = 22 + Math.floor(Math.random() * 24);
+    g.fillStyle = `rgb(${sh},${sh},${sh + 2})`;
+    g.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(8, 2);
+  tex.anisotropy = 4;
+  return tex;
+}
+
 function createSmokeTexture() {
   const c = document.createElement('canvas');
   c.width = c.height = 64;
@@ -226,6 +306,35 @@ const WEATHER_PRESETS = {
 const ZONE_T = { city: 0.08, highway: 0.47, coast: 0.83 };
 const GEAR_MAX_KMH = [55, 95, 140, 190, 240, 300];
 
+const IS_MOBILE = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) ||
+  (navigator.maxTouchPoints > 1 && window.matchMedia('(pointer: coarse)').matches);
+
+// Cross streets on the downtown straight (x = 0)
+const JUNCTION_Z = [-50, 100];
+const nearJunction = (pt, r) => JUNCTION_Z.some((jz) => Math.abs(pt.z - jz) < r && Math.abs(pt.x) < 15);
+
+// Sky gradients per time of day (zenith / horizon / sun glow strength)
+const SKY = {
+  morning: { top: 0x3f7fcf, hor: 0xbfd9ee, glow: 1.0 },
+  sunset:  { top: 0x27345f, hor: 0xff9a5c, glow: 1.4 },
+  night:   { top: 0x01030a, hor: 0x0a1322, glow: 0.25 }
+};
+
+// Graphics presets: dpr = pixel-ratio cap, every = shadow update interval (frames)
+const PRESETS = {
+  low:    { dpr: 1.0,  res: 0.85, shadow: false, map: 512,  every: 0, spots: false,   tail: false, trees: 0.3, traffic: 5,  rain: 0.4, glass: false, coat: false },
+  medium: { dpr: 1.25, res: 1.0,  shadow: true,  map: 1024, every: 2, spots: 'night', tail: false, trees: 0.7, traffic: 8,  rain: 0.7, glass: false, coat: true },
+  high:   { dpr: 1.75, res: 1.0,  shadow: true,  map: 2048, every: 1, spots: true,    tail: true,  trees: 1,   traffic: 10, rain: 1,   glass: false, coat: true },
+  ultra:  { dpr: 2.0,  res: 1.0,  shadow: true,  map: 2048, every: 1, spots: true,    tail: true,  trees: 1,   traffic: 10, rain: 1,   glass: true,  coat: true }
+};
+const PRESET_ORDER = ['low', 'medium', 'high', 'ultra'];
+const ENV_NUM = ['sunI', 'sunPow', 'hemi', 'exp', 'win', 'envI', 'fog', 'rough', 'metal'];
+const cloneEnv = (e) => ({
+  top: e.top.clone(), hor: e.hor.clone(), sun: e.sun.clone(), sunPos: e.sunPos.clone(),
+  sunI: e.sunI, sunPow: e.sunPow, hemi: e.hemi, exp: e.exp, win: e.win, envI: e.envI,
+  fog: e.fog, rough: e.rough, metal: e.metal
+});
+
 // ============================================================================
 // 4. MAIN GAME ENGINE
 // ============================================================================
@@ -239,7 +348,7 @@ class UltimateDriveSimulator {
       mode: 'MENU', // 'MENU', 'INTRO', 'DRIVING'
       timeOfDay: 'sunset',
       weather: 'clear',
-      preset: 'high',
+      preset: IS_MOBILE ? 'medium' : 'high',
       resScale: 1.0,
       fov: 62,
       steerSens: 1.0,
@@ -266,7 +375,10 @@ class UltimateDriveSimulator {
       pitch: 0,
       roll: 0,
       slipRatio: 0,
-      wheelRotation: 0
+      wheelRotation: 0,
+      heave: 0,
+      heaveVel: 0,
+      slope: 0
     };
 
     this.audio = new AutomotiveAudioEngine();
@@ -280,19 +392,40 @@ class UltimateDriveSimulator {
     this.longAccel = 0;
     this.orbitAngle = 0;
     this.flash = 0;
+    this.frame = 0;
+    this.hudAcc = 0;
+    this.dynScale = 1;
+    this.autoQuality = true;
+    this.adaptT = 0;
+    this.goodT = 0;
+    this.prevGear = 1;
+    this.lastIdx = 0;
+    this.lastHaptic = 0;
+    this.envBlend = false;
+    this.envTimer = 0;
+    this.camInit = false;
+    this.camKey = '';
+    this.camBlend = 1;
+    this.camFromPos = new THREE.Vector3();
+    this.camFromLook = new THREE.Vector3();
+    this.camSmPos = new THREE.Vector3();
+    this.camSmLook = new THREE.Vector3();
+    this.fovCur = 62;
     this.baseHemi = 0.65;
     this.sunOffset = new THREE.Vector3(120, 95, 80);
     this.camPos = new THREE.Vector3();
     this.camLook = new THREE.Vector3();
 
     this.initWebGL();
+    this.buildSky();
     this.buildWorld();
     this.buildVehicle();
     this.buildWeatherAndParticles();
     this.buildMinimap();
     this.bindUIAndControls();
-    this.applyEnvironmentState();
+    this.applyEnvironmentState(true);
     this.applyGraphicsPreset(this.state.preset);
+    this.refreshEnvMap();
 
     // Spawn initially in Downtown City
     this.teleportToZone('city');
@@ -317,7 +450,7 @@ class UltimateDriveSimulator {
     try {
       this.renderer = new THREE.WebGLRenderer({
         canvas: this.canvas,
-        antialias: true,
+        antialias: !IS_MOBILE,
         powerPreference: 'high-performance'
       });
     } catch (err) {
@@ -330,7 +463,9 @@ class UltimateDriveSimulator {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.shadowMap.autoUpdate = false;
+    this.renderer.shadowMap.needsUpdate = true;
 
     this.canvas.addEventListener('webglcontextlost', (e) => {
       e.preventDefault();
@@ -350,7 +485,7 @@ class UltimateDriveSimulator {
     );
 
     // Studio/Automotive Environment Map Reflections
-    const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
+    const pmremGenerator = (this.pmrem = new THREE.PMREMGenerator(this.renderer));
     this.scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
 
     // Lighting
@@ -380,8 +515,9 @@ class UltimateDriveSimulator {
     const h = window.innerHeight;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    const maxDPR = Math.min(window.devicePixelRatio || 1, 2) * this.state.resScale;
-    this.renderer.setPixelRatio(maxDPR);
+    const cap = this.cfg ? this.cfg.dpr : 1.5;
+    const dpr = Math.min(window.devicePixelRatio || 1, cap) * this.state.resScale * this.dynScale;
+    this.renderer.setPixelRatio(Math.max(0.5, dpr));
     this.renderer.setSize(w, h, false);
   }
 
@@ -455,9 +591,11 @@ class UltimateDriveSimulator {
         const rIdx = i * 2;
         roadIndices.push(rIdx, rIdx + 1, rIdx + 2, rIdx + 1, rIdx + 3, rIdx + 2);
 
-        const bIdx = i * 4;
-        barrierIndices.push(bIdx, bIdx + 1, bIdx + 4, bIdx + 1, bIdx + 5, bIdx + 4);
-        barrierIndices.push(bIdx + 2, bIdx + 6, bIdx + 3, bIdx + 3, bIdx + 6, bIdx + 7);
+        if (!nearJunction(pt, 6.5)) {
+          const bIdx = i * 4;
+          barrierIndices.push(bIdx, bIdx + 1, bIdx + 4, bIdx + 1, bIdx + 5, bIdx + 4);
+          barrierIndices.push(bIdx + 2, bIdx + 6, bIdx + 3, bIdx + 3, bIdx + 6, bIdx + 7);
+        }
       }
     }
 
@@ -523,6 +661,7 @@ class UltimateDriveSimulator {
     const dummy = new THREE.Object3D();
     let idx = 0;
     for (let z = -150; z <= 220; z += 26) {
+      if (JUNCTION_Z.some((j) => Math.abs(z - j) < 28)) continue;
       for (const side of [-1, 1]) {
         if (idx >= buildingCount) break;
         const distFromRoad = 22 + Math.random() * 45;
@@ -574,6 +713,12 @@ class UltimateDriveSimulator {
       instancedPoles.setMatrixAt(i, dummy.matrix);
     }
     this.scene.add(instancedPoles);
+
+    this.buildScenery();
+    // Static geometry never moves: skip per-frame matrix updates
+    this.scene.traverse((o) => {
+      if (o.isMesh && !o.userData.dynamic) { o.updateMatrix(); o.matrixAutoUpdate = false; }
+    });
 
     this.spawnTraffic(10);
   }
@@ -635,6 +780,8 @@ class UltimateDriveSimulator {
     const r = this.carRig;
     if (!r) return;
     if (r.lights) {
+      const allowed = this.spotsAllowed();
+      r.lights.headSpotL.visible = r.lights.headSpotR.visible = allowed;
       r.lights.headSpotL.intensity = on_ ? 28 : 0;
       r.lights.headSpotR.intensity = on_ ? 28 : 0;
     }
@@ -710,7 +857,7 @@ class UltimateDriveSimulator {
       this.rain.position.set(p.pos.x, 0, p.pos.z);
       const a = this.rainPos;
       const fall = 38 * dt;
-      for (let i = 0; i < this.rainCount; i++) {
+      for (let i = 0; i < this.rainActive; i++) {
         const o = i * 6;
         let y = a[o + 1] - fall;
         if (y < 0) {
@@ -756,33 +903,40 @@ class UltimateDriveSimulator {
   // --------------------------------------------------------------------------
   // ENVIRONMENT / GRAPHICS STATE
   // --------------------------------------------------------------------------
-  applyEnvironmentState() {
+  applyEnvironmentState(snap = false) {
     const T = TIME_PRESETS[this.state.timeOfDay] || TIME_PRESETS.sunset;
     const W = WEATHER_PRESETS[this.state.weather] || WEATHER_PRESETS.clear;
+    const SK = SKY[this.state.timeOfDay] || SKY.sunset;
+    const e = this.envT || (this.envT = { top: new THREE.Color(), hor: new THREE.Color(), sun: new THREE.Color(), sunPos: new THREE.Vector3() });
+    e.top.setHex(SK.top).multiplyScalar(W.dark);
+    e.hor.setHex(SK.hor).multiplyScalar(W.dark);
+    e.sun.setHex(T.sun);
+    e.sunPos.set(T.sunPos[0], T.sunPos[1], T.sunPos[2]);
+    e.sunI = T.sunI * W.dark;
+    e.sunPow = SK.glow * W.dark * (W.rain > 0 ? 0.35 : 1);
+    e.hemi = T.hemi * (0.6 + 0.4 * W.dark);
+    e.exp = T.exp;
+    e.win = T.win;
+    e.envI = T.env * W.dark;
+    e.fog = T.fog * W.fogMul;
+    e.rough = W.rough;
+    e.metal = W.metal;
 
-    const sky = new THREE.Color(T.sky).multiplyScalar(W.dark);
-    this.scene.background.copy(sky);
-    this.scene.fog.color.copy(sky);
-    this.scene.fog.density = T.fog * W.fogMul;
-
-    this.sunLight.color.setHex(T.sun);
-    this.sunLight.intensity = T.sunI * W.dark;
-    this.sunOffset.set(T.sunPos[0], T.sunPos[1], T.sunPos[2]);
-    this.baseHemi = T.hemi * (0.6 + 0.4 * W.dark);
-    this.ambientLight.intensity = this.baseHemi;
-    this.renderer.toneMappingExposure = T.exp;
-    this.scene.environmentIntensity = T.env * W.dark;
-
-    this.bldgMat.emissiveIntensity = T.win;
-    this.roadMaterial.roughness = W.rough;
-    this.roadMaterial.metalness = W.metal;
+    if (!this.envC || snap) {
+      this.envC = cloneEnv(e);
+      this.envBlend = false;
+      this.applyEnvC();
+    } else {
+      this.envBlend = true; // fade smoothly to the new look
+      this.envTimer = 2.5;
+    }
 
     this.rain.visible = W.rain > 0;
     this.rain.material.opacity = 0.25 + W.rain * 0.35;
-    this.rain.geometry.setDrawRange(0, Math.floor(this.rainCount * W.rain) * 2);
+    this.applyRainRange();
 
     if (this.state.timeOfDay === 'night' || this.state.weather === 'heavy_rain') this.setHeadlights(true);
-
+    else this.setHeadlights(this.state.headlightsOn);
     this.updateSummary();
   }
 
@@ -798,32 +952,48 @@ class UltimateDriveSimulator {
   }
 
   applyGraphicsPreset(preset) {
+    const CFG = PRESETS[preset] || PRESETS.high;
+    preset = PRESETS[preset] ? preset : 'high';
+    this.cfg = CFG;
     this.state.preset = preset;
-    const cfg = {
-      low: { res: 0.7, shadow: false, map: 512 },
-      medium: { res: 0.85, shadow: true, map: 1024 },
-      high: { res: 1.0, shadow: true, map: 2048 }
-    }[preset] || { res: 1.0, shadow: true, map: 1024 };
+    this.state.resScale = CFG.res;
+    this.dynScale = 1;
+    this.adaptT = 0;
+    this.goodT = 0;
 
-    this.state.resScale = cfg.res;
+    // Car materials: glass transmission (Ultra only) and clearcoat (not on Low)
     this.carRig.root.traverse((o) => {
       const m = o.isMesh ? o.material : null;
-      if (m && m.isMeshPhysicalMaterial && (m.userData.t0 ?? m.transmission) > 0) {
-        if (m.userData.t0 === undefined) m.userData.t0 = m.transmission;
-        const t = preset === 'high' ? m.userData.t0 : 0;
-        if (m.transmission !== t) { m.transmission = t; m.needsUpdate = true; }
-      }
+      if (!m || !m.isMeshPhysicalMaterial) return;
+      if (m.userData.t0 === undefined) { m.userData.t0 = m.transmission; m.userData.cc0 = m.clearcoat; }
+      const t = CFG.glass ? m.userData.t0 : 0;
+      const cc = CFG.coat ? m.userData.cc0 : 0;
+      if (m.transmission !== t || m.clearcoat !== cc) { m.transmission = t; m.clearcoat = cc; m.needsUpdate = true; }
     });
-    this.sunLight.castShadow = cfg.shadow;
-    if (this.sunLight.shadow.mapSize.x !== cfg.map) {
+
+    // Shadows
+    this.sunLight.castShadow = CFG.shadow;
+    if (this.sunLight.shadow.mapSize.x !== CFG.map) {
       if (this.sunLight.shadow.map) { this.sunLight.shadow.map.dispose(); this.sunLight.shadow.map = null; }
-      this.sunLight.shadow.mapSize.set(cfg.map, cfg.map);
+      this.sunLight.shadow.mapSize.set(CFG.map, CFG.map);
     }
+    this.renderer.shadowMap.needsUpdate = true;
+
+    // Detail density
+    this.traffic.forEach((t, i) => { t.mesh.visible = i < CFG.traffic; });
+    if (this.treeMeshes) {
+      const n = Math.floor(this.treeTotal * CFG.trees);
+      this.treeMeshes.forEach((m) => { m.count = n; });
+    }
+    if (this.carRig.lights) this.carRig.lights.tailPointLight.visible = CFG.tail;
+    this.setHeadlights(this.state.headlightsOn);
+    this.applyRainRange();
+
     this.updateViewportSize();
     setText(UI.gfxBtn, `GFX: ${preset.toUpperCase()}`);
-    setText(UI.resLabel, `${Math.round(cfg.res * 100)}%`);
+    setText(UI.resLabel, `${Math.round(CFG.res * 100)}%`);
     const sl = $(UI.res);
-    if (sl) sl.value = String(cfg.res);
+    if (sl) sl.value = String(CFG.res);
     this.syncChips('#preset-select .chip-btn', 'preset', preset);
     this.updateSummary();
   }
@@ -881,6 +1051,11 @@ class UltimateDriveSimulator {
     });
     g.closePath();
     g.stroke();
+    for (const j of this.junctions || []) {
+      const [x1, y1] = this.mmPoint(j.x - 28, j.z);
+      const [x2, y2] = this.mmPoint(j.x + 28, j.z);
+      g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+    }
     this.mm.layer = layer;
   }
 
@@ -896,6 +1071,7 @@ class UltimateDriveSimulator {
     g.drawImage(this.mm.layer, 0, 0);
     g.fillStyle = '#ffb347';
     for (const tr of this.traffic) {
+      if (!tr.mesh.visible) continue;
       const [x, y] = this.mmPoint(tr.mesh.position.x, tr.mesh.position.z);
       g.fillRect(x - 1.5, y - 1.5, 3, 3);
     }
@@ -972,6 +1148,24 @@ class UltimateDriveSimulator {
   }
 
   bindUIAndControls() {
+    // Add the ULTRA preset chip (index.html only ships Low/Medium/High)
+    const pg = $('preset-select');
+    if (pg && !pg.querySelector('[data-preset="ultra"]')) {
+      const b = document.createElement('button');
+      b.className = 'chip-btn';
+      b.dataset.preset = 'ultra';
+      b.textContent = 'ULTRA (Max)';
+      pg.appendChild(b);
+    }
+    // Mobile: no tap flash / pull-to-refresh; pause when the tab is hidden; keep screen awake
+    const st = document.createElement('style');
+    st.textContent = '*{-webkit-tap-highlight-color:transparent}html,body{overscroll-behavior:none}.touch-btn{touch-action:none}';
+    document.head.appendChild(st);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && this.state.mode === 'DRIVING') this.togglePause();
+    });
+    try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (e) { /* ignore */ }
+
     // Menu tabs
     const tabs = document.querySelectorAll('.tab-btn');
     tabs.forEach((t) => t.addEventListener('click', () => {
@@ -997,8 +1191,7 @@ class UltimateDriveSimulator {
     on(UI.lightsBtn, 'click', () => this.setHeadlights(!this.state.headlightsOn));
     on(UI.audioBtn, 'click', () => this.setAudioEnabled(!this.audio.enabled));
     on(UI.gfxBtn, 'click', () => {
-      const order = ['low', 'medium', 'high'];
-      this.applyGraphicsPreset(order[(order.indexOf(this.state.preset) + 1) % 3]);
+      this.applyGraphicsPreset(PRESET_ORDER[(PRESET_ORDER.indexOf(this.state.preset) + 1) % PRESET_ORDER.length]);
     });
     on(UI.glbLoad, 'click', () => { const el = $(UI.glbUrl); if (el) this.loadGLB(el.value.trim()); });
 
@@ -1075,6 +1268,262 @@ class UltimateDriveSimulator {
     });
   }
 
+  // --------------------------------------------------------------------------
+  // SKY, REFLECTIONS, SCENERY
+  // --------------------------------------------------------------------------
+  buildSky() {
+    this.skyUniforms = {
+      top: { value: new THREE.Color(0x27345f) },
+      horizon: { value: new THREE.Color(0xff9a5c) },
+      ground: { value: new THREE.Color(0x0a0c10) },
+      sunDir: { value: new THREE.Vector3(0, 1, 0) },
+      sunColor: { value: new THREE.Color(0xffb870) },
+      sunPow: { value: 1 }
+    };
+    const mat = new THREE.ShaderMaterial({
+      uniforms: this.skyUniforms,
+      side: THREE.BackSide,
+      depthWrite: false,
+      depthTest: false,
+      vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `
+        uniform vec3 top; uniform vec3 horizon; uniform vec3 ground; uniform vec3 sunDir; uniform vec3 sunColor; uniform float sunPow;
+        varying vec3 vDir;
+        void main(){
+          vec3 d = normalize(vDir);
+          float h = d.y;
+          vec3 c = h > 0.0 ? mix(horizon, top, pow(h, 0.55)) : mix(horizon, ground, clamp(-h * 5.0, 0.0, 1.0));
+          float s = max(dot(d, normalize(sunDir)), 0.0);
+          c += sunColor * (pow(s, 600.0) * 6.0 + pow(s, 24.0) * 0.45 + pow(s, 4.0) * 0.12) * sunPow;
+          gl_FragColor = vec4(c, 1.0);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }`
+    });
+    const geo = new THREE.SphereGeometry(900, 32, 16);
+    this.sky = new THREE.Mesh(geo, mat);
+    this.sky.frustumCulled = false;
+    this.sky.renderOrder = -1000;
+    this.sky.userData.dynamic = true;
+    this.scene.add(this.sky);
+    this.envScene = new THREE.Scene();
+    this.envScene.add(new THREE.Mesh(geo, mat));
+  }
+
+  // Car/road reflections come from the live sky (regenerated only when the look changes)
+  refreshEnvMap() {
+    if (!this.pmrem || !this.envScene) return;
+    const rt = this.pmrem.fromScene(this.envScene, 0.02, 0.1, 1000);
+    if (this.envRT) this.envRT.dispose();
+    this.envRT = rt;
+    this.scene.environment = rt.texture;
+  }
+
+  applyEnvC() {
+    const c = this.envC, u = this.skyUniforms;
+    u.top.value.copy(c.top);
+    u.horizon.value.copy(c.hor);
+    u.sunColor.value.copy(c.sun);
+    u.sunDir.value.copy(c.sunPos).normalize();
+    u.sunPow.value = c.sunPow;
+    this.scene.background.copy(c.hor);
+    this.scene.fog.color.copy(c.hor);
+    this.scene.fog.density = c.fog;
+    this.sunLight.color.copy(c.sun);
+    this.sunLight.intensity = c.sunI;
+    this.sunOffset.copy(c.sunPos);
+    this.baseHemi = c.hemi;
+    this.ambientLight.intensity = c.hemi;
+    this.renderer.toneMappingExposure = c.exp;
+    this.scene.environmentIntensity = c.envI;
+    this.bldgMat.emissiveIntensity = c.win;
+    this.roadMaterial.roughness = c.rough;
+    this.roadMaterial.metalness = c.metal;
+    if (this.junctionMat) { this.junctionMat.roughness = c.rough; this.junctionMat.metalness = c.metal; }
+    if (this.lampMat) this.lampMat.color.setHex(0xffe2b0).multiplyScalar(0.25 + c.win * 1.6);
+  }
+
+  updateEnv(dt) {
+    if (!this.envBlend) return;
+    const c = this.envC, t = this.envT;
+    this.envTimer -= dt;
+    if (this.envTimer <= 0) {
+      this.envC = cloneEnv(t);
+      this.envBlend = false;
+      this.applyEnvC();
+      this.refreshEnvMap();
+      return;
+    }
+    const k = 1 - Math.exp(-dt * 2.5);
+    c.top.lerp(t.top, k);
+    c.hor.lerp(t.hor, k);
+    c.sun.lerp(t.sun, k);
+    c.sunPos.lerp(t.sunPos, k);
+    for (const n of ENV_NUM) c[n] += (t[n] - c[n]) * k;
+    this.applyEnvC();
+  }
+
+  buildScenery() {
+    const dummy = new THREE.Object3D();
+    const R = Math.random;
+    const S = this.roadSamples;
+
+    // Sidewalks along both sides of the whole loop (skipped at junctions)
+    const sp = [], si = [];
+    let vi = 0;
+    for (let i = 0; i < S.length; i++) {
+      const a = S[i], b = S[(i + 1) % S.length];
+      if (nearJunction(a.pt, 7)) continue;
+      for (const side of [-1, 1]) {
+        const o0 = this.halfRoad + 0.8, o1 = this.halfRoad + 4.2;
+        const p0 = a.pt.clone().addScaledVector(a.right, side * o0), p1 = a.pt.clone().addScaledVector(a.right, side * o1);
+        const p2 = b.pt.clone().addScaledVector(b.right, side * o0), p3 = b.pt.clone().addScaledVector(b.right, side * o1);
+        [p0, p1, p2, p3].forEach((q) => sp.push(q.x, q.y + 0.1, q.z));
+        si.push(vi, vi + 1, vi + 2, vi + 1, vi + 3, vi + 2);
+        vi += 4;
+      }
+    }
+    const swGeo = new THREE.BufferGeometry();
+    swGeo.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+    swGeo.setIndex(si);
+    swGeo.computeVertexNormals();
+    const sw = new THREE.Mesh(swGeo, new THREE.MeshStandardMaterial({ color: 0x3a3f46, roughness: 0.9, side: THREE.DoubleSide }));
+    sw.receiveShadow = true;
+    this.scene.add(sw);
+
+    // Trees (2 instanced draw calls): sparse in the city, denser on highway/coast
+    const maxTrees = 280;
+    const trunks = new THREE.InstancedMesh(
+      new THREE.CylinderGeometry(0.16, 0.24, 2.4, 5).translate(0, 1.2, 0),
+      new THREE.MeshStandardMaterial({ color: 0x4a3626, roughness: 1 }), maxTrees);
+    const crowns = new THREE.InstancedMesh(
+      new THREE.ConeGeometry(1.7, 5.4, 6).translate(0, 4.9, 0),
+      new THREE.MeshStandardMaterial({ color: 0x1f4a2a, roughness: 0.95 }), maxTrees);
+    let n = 0;
+    for (let i = 0; i < S.length && n < maxTrees; i += 3) {
+      const s = S[i];
+      if (nearJunction(s.pt, 12)) continue;
+      const city = s.t < 0.3;
+      for (const side of [-1, 1]) {
+        if (n >= maxTrees || R() < (city ? 0.7 : 0.3)) continue;
+        const off = city ? this.halfRoad + 2.6 : this.halfRoad + 5 + R() * 18;
+        dummy.position.copy(s.pt).addScaledVector(s.right, side * off);
+        dummy.position.y = s.pt.y;
+        const sc = 0.8 + R() * 0.8;
+        dummy.scale.setScalar(sc);
+        dummy.rotation.set(0, R() * 6.28, 0);
+        dummy.updateMatrix();
+        trunks.setMatrixAt(n, dummy.matrix);
+        crowns.setMatrixAt(n, dummy.matrix);
+        n++;
+      }
+    }
+    trunks.count = crowns.count = n;
+    this.treeTotal = n;
+    this.treeMeshes = [trunks, crowns];
+    this.scene.add(trunks, crowns);
+
+    // Glowing lamp heads on top of the streetlight poles (no real lights: cheap)
+    const lampCount = 100;
+    this.lampMat = new THREE.MeshBasicMaterial({ color: 0xffe2b0 });
+    const lamps = new THREE.InstancedMesh(new THREE.BoxGeometry(1.0, 0.14, 0.4), this.lampMat, lampCount);
+    for (let i = 0; i < lampCount; i++) {
+      const s = S[(i * 5) % S.length];
+      const side = i % 2 === 0 ? 1 : -1;
+      dummy.position.copy(s.pt).addScaledVector(s.right, side * (this.halfRoad + 1.1) - side * 0.6);
+      dummy.position.y = s.pt.y + 7.5;
+      dummy.scale.set(1, 1, 1);
+      dummy.rotation.set(0, Math.atan2(s.tangent.x, s.tangent.z), 0);
+      dummy.updateMatrix();
+      lamps.setMatrixAt(i, dummy.matrix);
+    }
+    this.scene.add(lamps);
+
+    // Intersections: cross streets with zebra crossings
+    this.junctions = JUNCTION_Z.map((z) => ({ x: 0, z }));
+    this.junctionMat = new THREE.MeshStandardMaterial({ map: createPlainAsphaltTexture(), roughness: 0.65, metalness: 0.15 });
+    const stubGeo = new THREE.BoxGeometry(56, 0.04, 11);
+    const zebra = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(0.7, 0.03, 3.2),
+      new THREE.MeshStandardMaterial({ color: 0xe8ecf2, roughness: 0.7 }), JUNCTION_Z.length * 20);
+    let zi = 0;
+    for (const jz of JUNCTION_Z) {
+      const stub = new THREE.Mesh(stubGeo, this.junctionMat);
+      stub.position.set(0, 0.2, jz);
+      stub.receiveShadow = true;
+      this.scene.add(stub);
+      for (const dz of [-8.5, 8.5]) {
+        for (let k = 0; k < 10; k++) {
+          dummy.position.set(-5.85 + k * 1.3, 0.23, jz + dz);
+          dummy.rotation.set(0, 0, 0);
+          dummy.scale.set(1, 1, 1);
+          dummy.updateMatrix();
+          zebra.setMatrixAt(zi++, dummy.matrix);
+        }
+      }
+    }
+    zebra.receiveShadow = true;
+    this.scene.add(zebra);
+  }
+
+  inJunction(pos) {
+    for (const jz of JUNCTION_Z) if (Math.abs(pos.z - jz) < 5.2 && Math.abs(pos.x) < 28) return true;
+    return false;
+  }
+
+  spotsAllowed() {
+    const c = this.cfg;
+    if (!c || c.spots === true) return true;
+    if (c.spots === 'night') return this.state.timeOfDay === 'night' || this.state.weather === 'heavy_rain';
+    return false;
+  }
+
+  applyRainRange() {
+    const W = WEATHER_PRESETS[this.state.weather] || WEATHER_PRESETS.clear;
+    this.rainActive = Math.floor(this.rainCount * W.rain * (this.cfg ? this.cfg.rain : 1));
+    this.rain.geometry.setDrawRange(0, this.rainActive * 2);
+  }
+
+  // Automatic quality: lower the render resolution when FPS drops, raise it back
+  // when there is headroom, and step the preset down if resolution alone is not enough.
+  adaptQuality(fps) {
+    if (!this.autoQuality || this.clock.elapsedTime < 4 || document.hidden) return;
+    this.adaptT += 0.5;
+    if (fps < 40 && this.adaptT >= 1.5) {
+      this.adaptT = 0;
+      this.goodT = 0;
+      if (this.dynScale > 0.6) {
+        this.dynScale = Math.max(0.55, this.dynScale - 0.1);
+        this.updateViewportSize();
+      } else if (fps < 30) {
+        const i = PRESET_ORDER.indexOf(this.state.preset);
+        if (i > 0) this.applyGraphicsPreset(PRESET_ORDER[i - 1]);
+      }
+    } else if (fps >= 57) {
+      this.goodT += 0.5;
+      if (this.goodT >= 6 && this.dynScale < 1) {
+        this.goodT = 0;
+        this.dynScale = Math.min(1, this.dynScale + 0.05);
+        this.updateViewportSize();
+      }
+    } else {
+      this.goodT = 0;
+    }
+  }
+
+  haptic() {
+    if (!IS_MOBILE || !navigator.vibrate) return;
+    const now = performance.now();
+    if (now - this.lastHaptic < 400) return;
+    this.lastHaptic = now;
+    navigator.vibrate(18);
+  }
+
+  pulseGear() {
+    const el = $(UI.gear);
+    if (el && el.animate) el.animate([{ transform: 'scale(1.4)' }, { transform: 'scale(1)' }], { duration: 220, easing: 'ease-out' });
+  }
+
   resetToRoad() {
     const i = this.nearestSample(this.physics.pos);
     const s = this.roadSamples[i];
@@ -1088,13 +1537,26 @@ class UltimateDriveSimulator {
   // PHYSICS
   // --------------------------------------------------------------------------
   nearestSample(pos) {
-    let best = 0, bd = Infinity;
-    for (let i = 0; i < this.roadSamples.length; i++) {
-      const s = this.roadSamples[i].pt;
-      const dx = pos.x - s.x, dz = pos.z - s.z;
-      const d = dx * dx + dz * dz;
-      if (d < bd) { bd = d; best = i; }
+    const S = this.roadSamples, n = S.length;
+    let best = this.lastIdx || 0, bd = Infinity;
+    const c = S[best].pt;
+    const far = (pos.x - c.x) * (pos.x - c.x) + (pos.z - c.z) * (pos.z - c.z) > 900;
+    if (far) {
+      for (let i = 0; i < n; i++) {
+        const q = S[i].pt;
+        const d = (pos.x - q.x) * (pos.x - q.x) + (pos.z - q.z) * (pos.z - q.z);
+        if (d < bd) { bd = d; best = i; }
+      }
+    } else {
+      const c0 = best;
+      for (let o = -12; o <= 12; o++) {
+        const i = (c0 + o + n) % n;
+        const q = S[i].pt;
+        const d = (pos.x - q.x) * (pos.x - q.x) + (pos.z - q.z) * (pos.z - q.z);
+        if (d < bd) { bd = d; best = i; }
+      }
     }
+    this.lastIdx = best;
     return best;
   }
 
@@ -1155,13 +1617,14 @@ class UltimateDriveSimulator {
     const relX = p.pos.x - s.pt.x, relZ = p.pos.z - s.pt.z;
     const lat = relX * s.right.x + relZ * s.right.z;
     const limit = this.halfRoad - 0.6;
-    if (Math.abs(lat) > limit) {
+    if (Math.abs(lat) > limit && !this.inJunction(p.pos)) {
       const side = Math.sign(lat);
       const over = lat - side * limit;
       p.pos.x -= s.right.x * over;
       p.pos.z -= s.right.z * over;
       const n = s.right.clone().multiplyScalar(side);
       const vn = p.vel.dot(n);
+      if (vn > 2.5) this.haptic();
       if (vn > 0) {
         p.vel.addScaledVector(n, -vn * 1.6);
         p.vel.multiplyScalar(0.92);
@@ -1171,6 +1634,7 @@ class UltimateDriveSimulator {
 
     // Traffic collisions
     for (const tr of this.traffic) {
+      if (!tr.mesh.visible) continue;
       const dx = p.pos.x - tr.mesh.position.x, dz = p.pos.z - tr.mesh.position.z;
       const d = Math.hypot(dx, dz);
       if (d < 3.1 && d > 0.001) {
@@ -1190,6 +1654,13 @@ class UltimateDriveSimulator {
     const kmh = Math.abs(p.speedKmh);
     let g = 1;
     while (g < 6 && kmh > GEAR_MAX_KMH[g - 1]) g++;
+    if (g !== this.prevGear && kmh > 5) {
+      const up = g > this.prevGear;
+      this.audio.shift(up, this.throttleVal);
+      if (up) p.rpm = Math.max(900, p.rpm - 1400);
+      this.pulseGear();
+    }
+    this.prevGear = g;
     p.gear = g;
     const lo = g === 1 ? 0 : GEAR_MAX_KMH[g - 2];
     const frac = (kmh - lo) / (GEAR_MAX_KMH[g - 1] - lo);
@@ -1203,10 +1674,28 @@ class UltimateDriveSimulator {
     p.pitch += (pitchT - p.pitch) * Math.min(1, dt * 5);
     p.roll += (rollT - p.roll) * Math.min(1, dt * 5);
     p.wheelRotation += (vlF * dt) / 0.36;
+
+    // Road slope (nose follows hills) + spring/damper body heave over bumps
+    const th = Math.hypot(s.tangent.x, s.tangent.z) || 1;
+    const dirSign = s.tangent.x * f.x + s.tangent.z * f.z >= 0 ? 1 : -1;
+    p.slope += (-Math.atan2(s.tangent.y, th) * dirSign - p.slope) * Math.min(1, dt * 6);
+    const sp = Math.min(1, p.speedMps / 25);
+    const bump = (Math.sin(p.pos.x * 0.83 + p.pos.z * 1.17) + Math.sin(p.pos.x * 2.1 - p.pos.z * 1.7) * 0.5) * 0.006 * sp;
+    const heaveT = -Math.abs(p.roll) * 0.25 + bump;
+    p.heaveVel += (-120 * (p.heave - heaveT) - 14 * p.heaveVel) * dt;
+    p.heave = THREE.MathUtils.clamp(p.heave + p.heaveVel * dt, -0.06, 0.06);
+
+    // Allow driving into cross streets, but stop at their far ends
+    if (this.inJunction(p.pos) && Math.abs(p.pos.x) > 27) {
+      const sx = Math.sign(p.pos.x);
+      p.pos.x = sx * 27;
+      if (p.vel.x * sx > 0) p.vel.x *= -0.2;
+    }
   }
 
   updateTraffic(dt) {
     for (const tr of this.traffic) {
+      if (!tr.mesh.visible) continue;
       tr.t = (tr.t + (tr.dir * tr.speed * dt) / this.roadLength + 1) % 1;
       const pt = this.roadCurve.getPointAt(tr.t);
       const tan = this.roadCurve.getTangentAt(tr.t);
@@ -1218,10 +1707,17 @@ class UltimateDriveSimulator {
 
   syncCarMesh() {
     const p = this.physics;
-    const root = this.carRig.root;
-    root.position.copy(p.pos);
-    root.rotation.set(p.pitch, p.heading, p.roll);
     const rig = this.carRig;
+    const root = rig.root;
+    root.position.copy(p.pos);
+    if (rig.bodyGroup) {
+      // Chassis pitch/roll/heave on the body only: wheels stay planted (suspension feel)
+      root.rotation.set(p.slope, p.heading, 0);
+      rig.bodyGroup.rotation.set(p.pitch, 0, p.roll);
+      rig.bodyGroup.position.y = p.heave;
+    } else {
+      root.rotation.set(p.pitch + p.slope, p.heading, p.roll);
+    }
     if (Array.isArray(rig.wheels)) {
       rig.wheels.forEach((w) => {
         w.spinGroup.rotation.x = p.wheelRotation;
@@ -1244,44 +1740,70 @@ class UltimateDriveSimulator {
     const f = new THREE.Vector3(Math.sin(p.heading), 0, Math.cos(p.heading));
     const l = new THREE.Vector3(f.z, 0, -f.x);
     let fov = this.state.fov;
+    let wantPos, wantLook, snap = false, key;
 
     if (this.state.mode !== 'DRIVING') {
-      // Showcase / intro orbit
       const intro = this.state.mode === 'INTRO';
+      key = this.state.mode;
       this.orbitAngle += dt * (intro ? 0.55 : 0.25);
       const k = intro ? Math.min(1, this.state.introTimer / 6) : 0;
-      const r = intro ? 9 + k * 1 : 7.5;
+      const r = intro ? 9 + k : 7.5;
       const a = intro ? p.heading + Math.PI * 0.9 + (1 - k) * 2.4 : this.orbitAngle;
-      const wantPos = new THREE.Vector3(p.pos.x + Math.sin(a) * r, p.pos.y + 2.2 + (intro ? k * 1 : 0), p.pos.z + Math.cos(a) * r);
-      this.camPos.copy(wantPos);
-      this.camLook.copy(p.pos).add(new THREE.Vector3(0, 0.9, 0));
+      wantPos = new THREE.Vector3(p.pos.x + Math.sin(a) * r, p.pos.y + 2.2 + k, p.pos.z + Math.cos(a) * r);
+      wantLook = p.pos.clone().add(new THREE.Vector3(0, 0.9, 0));
+      snap = true;
     } else {
       const idx = this.state.cameraIndex;
-      let wantPos, wantLook;
-      if (idx === 0 || idx === 1) {
-        const back = idx === 0 ? 8.2 : 5.6;
-        const up = idx === 0 ? 3.2 : 2.0;
-        wantPos = p.pos.clone().addScaledVector(f, -back).add(new THREE.Vector3(0, up, 0));
-        wantLook = p.pos.clone().addScaledVector(f, 4).add(new THREE.Vector3(0, 1.1, 0));
-        const k = 1 - Math.exp(-dt * 6);
-        this.camPos.lerp(wantPos, k);
-        this.camLook.lerp(wantLook, k);
-        fov += Math.min(18, Math.abs(p.speedKmh) * 0.06);
+      key = 'D' + idx;
+      if (idx < 2) {
+        // Chase: pulls back and swings outward in corners, looks into the turn
+        const spd = Math.min(1, Math.abs(p.speedKmh) / 200);
+        const back = (idx === 0 ? 8.2 : 5.6) + spd * 1.8;
+        const up = (idx === 0 ? 3.2 : 2.0) - spd * 0.3;
+        wantPos = p.pos.clone().addScaledVector(f, -back).add(new THREE.Vector3(0, up, 0)).addScaledVector(l, p.angularVel * -0.9);
+        wantLook = p.pos.clone().addScaledVector(f, 4 + spd * 3).addScaledVector(l, p.angularVel * 1.6).add(new THREE.Vector3(0, 1.1, 0));
+        fov += spd * 14;
       } else {
-        const off = idx === 2
+        snap = true;
+        wantPos = idx === 2
           ? p.pos.clone().addScaledVector(f, 1.1).add(new THREE.Vector3(0, 1.18, 0))
           : p.pos.clone().addScaledVector(f, -0.2).addScaledVector(l, -0.36).add(new THREE.Vector3(0, 1.2, 0));
-        this.camPos.copy(off);
-        this.camLook.copy(off).addScaledVector(f, 20);
-        // keep the look target following the car's pitch/roll very slightly
-        this.camLook.y += p.pitch * -8;
+        wantLook = wantPos.clone().addScaledVector(f, 20);
+        wantLook.y += p.pitch * -8;
       }
+    }
+
+    if (!this.camInit) { this.camSmPos.copy(wantPos); this.camSmLook.copy(wantLook); this.camInit = true; }
+    if (snap) {
+      this.camSmPos.copy(wantPos);
+      this.camSmLook.copy(wantLook);
+    } else {
+      this.camSmPos.lerp(wantPos, 1 - Math.exp(-dt * 5.5));
+      this.camSmLook.lerp(wantLook, 1 - Math.exp(-dt * 9));
+    }
+
+    // Smooth blend whenever the camera mode changes
+    if (key !== this.camKey) {
+      this.camFromPos.copy(this.camPos);
+      this.camFromLook.copy(this.camLook);
+      this.camBlend = this.camKey ? 0 : 1;
+      this.camKey = key;
+    }
+    if (this.camBlend < 1) {
+      this.camBlend = Math.min(1, this.camBlend + dt / 0.55);
+      const e = this.camBlend * this.camBlend * (3 - 2 * this.camBlend);
+      this.camPos.copy(this.camFromPos).lerp(this.camSmPos, e);
+      this.camLook.copy(this.camFromLook).lerp(this.camSmLook, e);
+    } else {
+      this.camPos.copy(this.camSmPos);
+      this.camLook.copy(this.camSmLook);
     }
 
     this.camera.position.copy(this.camPos);
     this.camera.lookAt(this.camLook);
-    if (Math.abs(this.camera.fov - fov) > 0.05) {
-      this.camera.fov = fov;
+    this.fovCur += (fov - this.fovCur) * (1 - Math.exp(-dt * 4));
+    if (Math.abs(this.camera.fov - this.fovCur) > 0.05) {
+      this.camera.fov = this.fovCur;
       this.camera.updateProjectionMatrix();
     }
   }
@@ -1308,14 +1830,17 @@ class UltimateDriveSimulator {
   // --------------------------------------------------------------------------
   animate() {
     requestAnimationFrame(this.animate);
-    const dt = Math.min(this.clock.getDelta(), 0.05);
+    const rawDt = this.clock.getDelta();
+    const dt = Math.min(rawDt, 0.05);
+    this.frame++;
 
     this.fpsFrames++;
-    this.fpsTime += dt;
+    this.fpsTime += rawDt;
     if (this.fpsTime >= 0.5) {
       this.fps = Math.round(this.fpsFrames / this.fpsTime);
       this.fpsFrames = 0;
       this.fpsTime = 0;
+      this.adaptQuality(this.fps);
     }
 
     if (this.state.mode === 'INTRO') {
@@ -1329,16 +1854,25 @@ class UltimateDriveSimulator {
     this.updateTraffic(dt);
     this.syncCarMesh();
     this.updateParticles(dt);
+    this.updateEnv(dt);
     this.updateCamera(dt);
 
-    // Keep the sun's shadow box centred on the car
+    this.sky.position.copy(this.camera.position);
     this.sunLight.target.position.copy(this.physics.pos);
     this.sunLight.position.copy(this.physics.pos).add(this.sunOffset);
+    const c = this.cfg;
+    if (c && c.shadow && c.every && this.frame % c.every === 0) this.renderer.shadowMap.needsUpdate = true;
 
     const p = this.physics;
-    this.audio.update(p.rpm, this.throttleVal, p.slipRatio, Math.abs(p.speedKmh));
-    this.updateHUD();
-    this.drawMinimap();
+    this.audio.update(p.rpm, this.throttleVal, p.slipRatio, Math.abs(p.speedKmh), this.input.brake ? 1 : 0);
+
+    // HUD + minimap at 20 Hz: plenty smooth, much cheaper
+    this.hudAcc += dt;
+    if (this.hudAcc >= 0.05) {
+      this.hudAcc = 0;
+      this.updateHUD();
+      this.drawMinimap();
+    }
 
     this.renderer.render(this.scene, this.camera);
   }
