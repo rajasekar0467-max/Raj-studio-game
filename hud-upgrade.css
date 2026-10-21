@@ -119,3 +119,67 @@ html body #hud-fps, html body #hud-env-badge { text-shadow: 0 1px 4px rgba(0, 0,
 .chip-btn.has-swatch[data-paint]::before {
   background: url('/assets/textures/paint_swatch_atlas.png') var(--sw-x, 0%) var(--sw-y, 0%) / 300% 204.8% no-repeat;
 }
+
+
+/* ==========================================================================
+   Phase update: canvas sizing, safe areas, touch controls, portrait layout
+   ========================================================================== */
+
+/* The canvas must be exactly the VISIBLE viewport. 100vh is taller than the visible area on Android
+   Chrome while the URL bar is showing, which stretched (blurred) the 3D view. */
+html body #game-canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
+
+/* Respect notches / rounded corners */
+html body .hud-top {
+  padding-top: max(12px, env(safe-area-inset-top));
+  padding-left: max(18px, env(safe-area-inset-left));
+  padding-right: max(18px, env(safe-area-inset-right));
+}
+html body .touch-controls-left { left: max(18px, env(safe-area-inset-left)); bottom: max(18px, env(safe-area-inset-bottom)); }
+html body .touch-controls-right { right: max(18px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom)); }
+html body .instrument-cluster { bottom: max(14px, env(safe-area-inset-bottom)); }
+
+/* Touch controls: larger targets (>= 9 mm), clearer shape, obvious pressed state */
+html body .touch-btn {
+  background: linear-gradient(180deg, rgba(34, 44, 60, 0.8), rgba(14, 18, 26, 0.86));
+  border: 1.5px solid rgba(255, 255, 255, 0.34);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
+  transition: background 90ms, border-color 90ms, box-shadow 90ms, transform 90ms;
+}
+html body .touch-btn.pressed {
+  background: linear-gradient(180deg, rgba(0, 168, 255, 0.55), rgba(0, 102, 177, 0.6));
+  border-color: #00a8ff;
+  box-shadow: 0 0 20px rgba(0, 168, 255, 0.6);
+  transform: scale(0.95);
+}
+html body .steer-btn { width: 88px; height: 88px; }
+html body .ebrake-btn { width: 72px; height: 64px; }
+html body .pedal-brake { width: 80px; height: 100px; }
+html body .pedal-gas { width: 86px; height: 128px; }
+html body .touch-controls-right { gap: 12px; }
+html body .touch-controls-left { gap: 14px; }
+
+/* Short / narrow landscape phones: keep controls clear of the centre cluster */
+@media (orientation: landscape) and (max-width: 780px), (orientation: landscape) and (max-height: 380px) {
+  html body .steer-btn { width: 70px; height: 70px; }
+  html body .ebrake-btn { width: 58px; height: 54px; }
+  html body .pedal-brake { width: 64px; height: 78px; }
+  html body .pedal-gas { width: 70px; height: 104px; }
+  html body .hud-icon-btn { padding: 6px 8px; font-size: 0.64rem; }
+}
+
+/* Portrait fallback: buttons wrap under the minimap, the cluster sits above the controls */
+@media (orientation: portrait) {
+  html body .hud-top { flex-wrap: wrap; gap: 8px; }
+  html body .hud-top-right { order: 3; width: 100%; justify-content: flex-start; }
+  html body .hud-icon-btn { padding: 7px 9px; font-size: 0.64rem; }
+  html body .instrument-cluster { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 138px); }
+  html body .touch-controls-left { left: max(10px, env(safe-area-inset-left)); gap: 10px; }
+  html body .touch-controls-right { right: max(10px, env(safe-area-inset-right)); gap: 8px; }
+  html body .steer-btn { width: 70px; height: 70px; }
+  html body .ebrake-btn { width: 58px; height: 54px; }
+  html body .pedal-brake { width: 64px; height: 84px; }
+  html body .pedal-gas { width: 72px; height: 112px; }
+}
