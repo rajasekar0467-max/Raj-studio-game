@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import './hud-upgrade.css';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { buildProceduralBMW, loadExternalGLBVehicle } from './carBuilder.js';
 
 // ============================================================================
@@ -25,6 +26,7 @@ const UI = {
 
 // Asset URLs go through Vite's BASE_URL so they work on Netlify (root) and GitHub Pages (sub-path)
 const ASSET = (p) => `${import.meta.env.BASE_URL}assets/${p}`;
+const PHYS_STEP = 1 / 60;   // fixed physics step: driving behaves the same at 20 FPS and 60 FPS
 const LANE_TILE_M = 60;   // one lane-marking tile = 5 dashes = ~60 m of road
 
 const _els = new Map();
@@ -308,16 +310,15 @@ function createSmokeTexture() {
 // 3. ENVIRONMENT PRESETS
 // ============================================================================
 const TIME_PRESETS = {
-  morning: { sky: 0x9fc3dd, sun: 0xfff0d8, sunI: 2.8, sunPos: [-90, 90, 70], hemi: 0.9, exp: 1.0, win: 0.0, env: 1.0, fog: 0.0018, label: 'MORNING', menu: 'MORNING' },
-  sunset:  { sky: 0x7a4f52, sun: 0xffb870, sunI: 2.6, sunPos: [120, 45, 80], hemi: 0.65, exp: 1.05, win: 0.35, env: 0.8, fog: 0.0022, label: 'SUNSET', menu: 'GOLDEN HOUR' },
-  night:   { sky: 0x05070d, sun: 0x6f8cff, sunI: 0.35, sunPos: [-60, 80, -40], hemi: 0.22, exp: 1.25, win: 1.0, env: 0.25, fog: 0.0026, label: 'NIGHT', menu: 'NIGHT CITY' }
+  morning: { sky: 0x9fc3dd, sun: 0xfff0d8, sunI: 2.8, sunPos: [-90, 90, 70], hemi: 0.9, exp: 1.0, win: 0.0, env: 1.0, fog: 0.0007, label: 'MORNING', menu: 'MORNING' },
+  sunset:  { sky: 0x7a4f52, sun: 0xffb870, sunI: 2.6, sunPos: [120, 45, 80], hemi: 0.65, exp: 1.05, win: 0.35, env: 0.8, fog: 0.0009, label: 'SUNSET', menu: 'GOLDEN HOUR' },
+  night:   { sky: 0x05070d, sun: 0x6f8cff, sunI: 0.35, sunPos: [-60, 80, -40], hemi: 0.22, exp: 1.25, win: 1.0, env: 0.25, fog: 0.0012, label: 'NIGHT', menu: 'NIGHT CITY' }
 };
 const WEATHER_PRESETS = {
   clear:      { dark: 1.0, fogMul: 1.0, rain: 0, rough: 0.9, metal: 0.04, grip: 1.0, label: 'CLEAR' },
   light_rain: { dark: 0.75, fogMul: 1.8, rain: 0.5, rough: 0.45, metal: 0.2, grip: 0.8, label: 'LIGHT RAIN' },
   heavy_rain: { dark: 0.5, fogMul: 3.2, rain: 1.0, rough: 0.28, metal: 0.3, grip: 0.65, label: 'STORM' }
 };
-const ZONE_T = { city: 0.08, highway: 0.47, coast: 0.83 };
 const GEAR_MAX_KMH = [55, 95, 140, 190, 240, 300];
 
 const IS_MOBILE = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent) ||
@@ -336,10 +337,10 @@ const SKY = {
 
 // Graphics presets: dpr = pixel-ratio cap, every = shadow update interval (frames)
 const PRESETS = {
-  low:    { dpr: 1.0,  res: 0.85, shadow: false, map: 512,  every: 0, spots: false,   tail: false, trees: 0.3, traffic: 5,  rain: 0.4, glass: false, coat: false },
-  medium: { dpr: 1.25, res: 1.0,  shadow: true,  map: 1024, every: 2, spots: 'night', tail: false, trees: 0.7, traffic: 8,  rain: 0.7, glass: false, coat: true },
-  high:   { dpr: 1.75, res: 1.0,  shadow: true,  map: 2048, every: 1, spots: true,    tail: true,  trees: 1,   traffic: 10, rain: 1,   glass: false, coat: true },
-  ultra:  { dpr: 2.0,  res: 1.0,  shadow: true,  map: 2048, every: 1, spots: true,    tail: true,  trees: 1,   traffic: 10, rain: 1,   glass: true,  coat: true }
+  low:    { dpr: 1.25, res: 1.0, shadow: false, map: 512,  every: 0, spots: false,   tail: false, trees: 0.3, traffic: 6,  rain: 0.4, glass: false, coat: false, bump: false },
+  medium: { dpr: 1.5,  res: 1.0, shadow: true,  map: 1024, every: 2, spots: 'night', tail: false, trees: 0.7, traffic: 10, rain: 0.7, glass: false, coat: true,  bump: false },
+  high:   { dpr: 2.0,  res: 1.0, shadow: true,  map: 2048, every: 1, spots: true,    tail: true,  trees: 1,   traffic: 14, rain: 1,   glass: false, coat: true,  bump: true },
+  ultra:  { dpr: 3.0,  res: 1.0, shadow: true,  map: 2048, every: 1, spots: true,    tail: true,  trees: 1,   traffic: 14, rain: 1,   glass: true,  coat: true,  bump: true }
 };
 const PRESET_ORDER = ['low', 'medium', 'high', 'ultra'];
 const ENV_NUM = ['sunI', 'sunPow', 'hemi', 'exp', 'win', 'envI', 'fog', 'rough', 'metal', 'skyMix'];
@@ -426,6 +427,7 @@ class UltimateDriveSimulator {
     this.camSmLook = new THREE.Vector3();
     this.fovCur = 62;
     this.dialVal = 0;
+    this.accum = 0;
     this.loadDone = false;
     this.assets = {};
     this.baseHemi = 0.65;
@@ -465,7 +467,7 @@ class UltimateDriveSimulator {
     try {
       this.renderer = new THREE.WebGLRenderer({
         canvas: this.canvas,
-        antialias: !IS_MOBILE,
+        antialias: true,   // cheap on tile-based phone GPUs, and removes the jagged edges
         powerPreference: 'high-performance'
       });
     } catch (err) {
@@ -495,8 +497,8 @@ class UltimateDriveSimulator {
     this.camera = new THREE.PerspectiveCamera(
       this.state.fov,
       window.innerWidth / window.innerHeight,
-      0.15,
-      1100
+      0.25,
+      3000
     );
 
     // Studio/Automotive Environment Map Reflections
@@ -544,28 +546,34 @@ class UltimateDriveSimulator {
     this.halfRoad = this.roadWidth * 0.5;
 
     const controlPoints = [
-      // Zone A: Modern City Straight & Junctions
+      // Zone A: Modern City Straight & Junctions (unchanged)
       new THREE.Vector3(0, 0.2, -160),
       new THREE.Vector3(0, 0.2, 0),
       new THREE.Vector3(0, 0.2, 170),
       new THREE.Vector3(95, 0.2, 260),
-      // Zone B: Scenic Mountain Highway & Overpass
-      new THREE.Vector3(260, 7.5, 230),
-      new THREE.Vector3(380, 12.0, 90),
-      new THREE.Vector3(410, 6.0, -90),
-      new THREE.Vector3(290, 1.5, -260),
-      // Zone C: Winding Coastal Route
-      new THREE.Vector3(110, 0.4, -330),
-      new THREE.Vector3(-120, 0.4, -310),
-      new THREE.Vector3(-240, 0.4, -180),
-      new THREE.Vector3(-160, 0.2, -170)
+      // Zone B: Mountain Highway - long climb over the eastern ridge and down the far side
+      new THREE.Vector3(325, 0.5, 660),
+      new THREE.Vector3(715, 3, 615),
+      new THREE.Vector3(1075, 10, 450),
+      new THREE.Vector3(1300, 22, 165),
+      new THREE.Vector3(1360, 28, -225),
+      new THREE.Vector3(1195, 22, -630),
+      new THREE.Vector3(865, 12, -945),
+      new THREE.Vector3(445, 5, -1110),
+      new THREE.Vector3(25, 1, -1080),
+      // Zone C: Coastal Route - sweeping bends along the western sea, then back to the city
+      new THREE.Vector3(-380, 0.4, -915),
+      new THREE.Vector3(-725, 0.4, -645),
+      new THREE.Vector3(-830, 0.4, -345),
+      new THREE.Vector3(-620, 0.3, -180),
+      new THREE.Vector3(-160, 0.2, -190)
     ];
 
     this.roadCurve = new THREE.CatmullRomCurve3(controlPoints, true, 'catmullrom', 0.45);
     this.roadLength = this.roadCurve.getLength();
     this.laneTiles = Math.max(1, Math.round(this.roadLength / LANE_TILE_M));
     this.roadSamples = [];
-    const sampleCount = 500;
+    const sampleCount = Math.max(500, Math.round(this.roadLength / 4));   // one sample every ~4 m
 
     const roadPositions = [];
     const roadUVs = [];
@@ -619,6 +627,9 @@ class UltimateDriveSimulator {
       }
     }
 
+    this.zoneT = { city: this.tAtPoint(95, 260), mountain: this.tAtPoint(25, -1080) };
+    this.zoneSpawn = { city: this.tAtPoint(0, -60), highway: this.tAtPoint(1360, -225), coast: this.tAtPoint(-830, -345) };
+
     const roadGeo = new THREE.BufferGeometry();
     roadGeo.setAttribute('position', new THREE.Float32BufferAttribute(roadPositions, 3));
     roadGeo.setAttribute('uv', new THREE.Float32BufferAttribute(roadUVs, 2));
@@ -668,21 +679,51 @@ class UltimateDriveSimulator {
     this.scene.add(new THREE.Mesh(barrierGeo, barrierMat));
 
     // Base Ground
-    const groundGeo = new THREE.PlaneGeometry(1600, 1600);
+    const groundGeo = new THREE.PlaneGeometry(7000, 7000);
     groundGeo.rotateX(-Math.PI / 2);
     const groundMat = new THREE.MeshStandardMaterial({ color: 0x131915, roughness: 0.92 });
     this.groundMat = groundMat;
     const ground = new THREE.Mesh(groundGeo, groundMat);
-    ground.position.y = -0.05;
+    ground.position.set(265, -0.05, -219);
     ground.receiveShadow = true;
     this.scene.add(ground);
 
+    // Embankments: where the road is raised it sits on a 1:1.7 grass fill slope down to the terrain
+    {
+      const ep = [], ei = [], eu = [];
+      let ev = 0;
+      const N = this.roadSamples.length, U = 1 / 7000, o0 = this.halfRoad + 4.2;
+      const run = (h) => Math.max(0.6, (h + 0.1) * 1.7);
+      for (let i = 0; i < N; i++) {
+        const a = this.roadSamples[i], b = this.roadSamples[(i + 1) % N];
+        if (nearJunction(a.pt, 7)) continue;
+        for (const side of [-1, 1]) {
+          const A0 = a.pt.clone().addScaledVector(a.right, side * o0); A0.y = a.pt.y + 0.1;
+          const A1 = a.pt.clone().addScaledVector(a.right, side * (o0 + run(a.pt.y))); A1.y = -0.05;
+          const B0 = b.pt.clone().addScaledVector(b.right, side * o0); B0.y = b.pt.y + 0.1;
+          const B1 = b.pt.clone().addScaledVector(b.right, side * (o0 + run(b.pt.y))); B1.y = -0.05;
+          [A0, A1, B0, B1].forEach((q) => { ep.push(q.x, q.y, q.z); eu.push(q.x * U, q.z * U); });
+          ei.push(ev, ev + 1, ev + 2, ev + 1, ev + 3, ev + 2);
+          ev += 4;
+        }
+      }
+      const eg = new THREE.BufferGeometry();
+      eg.setAttribute('position', new THREE.Float32BufferAttribute(ep, 3));
+      eg.setAttribute('uv', new THREE.Float32BufferAttribute(eu, 2));
+      eg.setIndex(ei);
+      eg.computeVertexNormals();
+      groundMat.side = THREE.DoubleSide;
+      const em = new THREE.Mesh(eg, groundMat);
+      em.receiveShadow = true;
+      this.scene.add(em);
+    }
+
     // Coastal Ocean Water Plane
-    const oceanGeo = new THREE.PlaneGeometry(900, 600);
+    const oceanGeo = new THREE.PlaneGeometry(2400, 2600);
     oceanGeo.rotateX(-Math.PI / 2);
     this.oceanMat = new THREE.MeshStandardMaterial({ color: 0x09253a, roughness: 0.12, metalness: 0.85 });
     const ocean = new THREE.Mesh(oceanGeo, this.oceanMat);
-    ocean.position.set(-140, 0.02, -450);
+    ocean.position.set(-2100, 0.02, -500);
     this.scene.add(ocean);
 
     // Instanced Modern City Skyscrapers
@@ -721,15 +762,28 @@ class UltimateDriveSimulator {
     instancedBldgs.count = idx; // don't draw unused identity-matrix instances at the origin
     this.scene.add(instancedBldgs);
 
-    // Mountain Silhouettes
-    const mountainGeo = new THREE.ConeGeometry(85, 110, 7);
+    // Distant mountain ring (one instanced draw call) outside the whole road network, open sea to the west
+    const mountainGeo = new THREE.ConeGeometry(1, 1, 7).translate(0, 0.5, 0);
     const mountainMat = new THREE.MeshStandardMaterial({ color: 0x182026, roughness: 0.9 });
     this.mountainMat = mountainMat;
-    [[480, 45, 220], [520, 52, 40], [490, 40, -140], [340, 35, 360]].forEach(([mx, my, mz]) => {
-      const m = new THREE.Mesh(mountainGeo, mountainMat);
-      m.position.set(mx, my, mz);
-      this.scene.add(m);
-    });
+    const ring = new THREE.InstancedMesh(mountainGeo, mountainMat, 26);
+    let mi = 0;
+    for (let i = 0; i < 26; i++) {
+      const a = (i / 26) * Math.PI * 2 + Math.sin(i * 12.9898) * 0.12;
+      const r = 1700 + (Math.sin(i * 78.233) * 0.5 + 0.5) * 700;
+      const mx = 265 + Math.cos(a) * r, mz = -219 + Math.sin(a) * r;
+      if (mx < -1100) continue;
+      const rad = 260 + (Math.sin(i * 39.346) * 0.5 + 0.5) * 220;
+      const hgt = 160 + (Math.sin(i * 11.135) * 0.5 + 0.5) * 220;
+      dummy.position.set(mx, -4, mz);
+      dummy.rotation.set(0, i, 0);
+      dummy.scale.set(rad, hgt, rad);
+      dummy.updateMatrix();
+      ring.setMatrixAt(mi++, dummy.matrix);
+    }
+    ring.count = mi;
+    ring.frustumCulled = false;
+    this.scene.add(ring);
 
     // Highway Tunnel Arch (axis along the road, arch on top)
     const tunnelGeo = new THREE.CylinderGeometry(12.5, 12.5, 55, 16, 1, true, Math.PI / 2, Math.PI);
@@ -747,7 +801,7 @@ class UltimateDriveSimulator {
     const poleGeo = new THREE.CylinderGeometry(0.12, 0.16, 7.5, 6);
     poleGeo.translate(0, 3.75, 0);
     const poleMat = new THREE.MeshStandardMaterial({ color: 0x2c323b, metalness: 0.8 });
-    const lightCount = 100;
+    const lightCount = Math.floor(this.roadSamples.length / 5);
     const instancedPoles = new THREE.InstancedMesh(poleGeo, poleMat, lightCount);
     for (let i = 0; i < lightCount; i++) {
       const sample = this.roadSamples[(i * 5) % this.roadSamples.length];
@@ -766,7 +820,7 @@ class UltimateDriveSimulator {
       if (o.isMesh && !o.userData.dynamic) { o.updateMatrix(); o.matrixAutoUpdate = false; }
     });
 
-    this.spawnTraffic(10);
+    this.spawnTraffic(14);
   }
 
   spawnTraffic(count) {
@@ -816,6 +870,7 @@ class UltimateDriveSimulator {
     this.carRig = buildProceduralBMW();
     this.carRig.root.rotation.order = 'YXZ';
     this.scene.add(this.carRig.root);
+    this.buildBlobShadow();
     this.setHeadlights(this.state.headlightsOn);
   }
 
@@ -831,23 +886,23 @@ class UltimateDriveSimulator {
       r.lights.headSpotL.intensity = on_ ? 28 : 0;
       r.lights.headSpotR.intensity = on_ ? 28 : 0;
     }
-    if (r.materials && r.materials.headlightMat) r.materials.headlightMat.emissiveIntensity = on_ ? 3.5 : 0.4;
+    const hm = r.headMats || (r.materials && r.materials.headlightMat ? [r.materials.headlightMat] : []);
+    hm.forEach((m) => { m.emissiveIntensity = on_ ? 3.5 : 0.4; });
   }
 
   setPaint(hex) {
-    const m = this.carRig.materials && this.carRig.materials.bodyPaintMat;
-    if (m) m.color.set(hex);
+    this.paintHex = hex;
+    const r = this.carRig;
+    const list = r.paintMats || (r.materials && r.materials.bodyPaintMat ? [r.materials.bodyPaintMat] : []);
+    list.forEach((m) => m.color.set(hex));
   }
 
   loadGLB(url) {
     if (!url) return;
     const b = $(UI.glbLoad);
-    loadExternalGLBVehicle(url, this.carRig, (msg) => {
-      console.log(msg);
-      if (!b) return;
-      b.textContent = /fail/i.test(msg) ? 'Failed' : /success/i.test(msg) ? 'Loaded' : 'Loading...';
-      setTimeout(() => { b.textContent = 'Load GLB'; }, 2500);
-    });
+    const flash = (t) => { if (!b) return; b.textContent = t; setTimeout(() => { b.textContent = 'Load GLB'; }, 2500); };
+    flash('Loading...');
+    this.loadVehicleGLB(url).then((ok) => flash(ok ? 'Loaded' : 'Failed'));
   }
 
   buildWeatherAndParticles() {
@@ -1043,11 +1098,13 @@ class UltimateDriveSimulator {
     const sl = $(UI.res);
     if (sl) sl.value = String(CFG.res);
     this.syncChips('#preset-select .chip-btn', 'preset', preset);
+    if (this.blob) this.blob.material.opacity = CFG.every === 1 ? 0.3 : 0.55;
+    this.applyBump();
     this.updateSummary();
   }
 
   teleportToZone(zone) {
-    const t = ZONE_T[zone] ?? 0;
+    const t = (this.zoneSpawn && this.zoneSpawn[zone]) ?? 0;
     const pt = this.roadCurve.getPointAt(t);
     const tan = this.roadCurve.getTangentAt(t);
     const p = this.physics;
@@ -1064,8 +1121,8 @@ class UltimateDriveSimulator {
   }
 
   zoneName(t) {
-    if (t < 0.33) return 'DOWNTOWN CORE';
-    if (t < 0.66) return 'MOUNTAIN HIGHWAY';
+    if (t < this.zoneT.city) return 'DOWNTOWN CORE';
+    if (t < this.zoneT.mountain) return 'MOUNTAIN HIGHWAY';
     return 'COASTAL ROUTE';
   }
 
@@ -1075,63 +1132,61 @@ class UltimateDriveSimulator {
   buildMinimap() {
     if (!this.minimapCanvas) return;
     const w = this.minimapCanvas.width, h = this.minimapCanvas.height;
-    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-    for (const s of this.roadSamples) {
-      minX = Math.min(minX, s.pt.x); maxX = Math.max(maxX, s.pt.x);
-      minZ = Math.min(minZ, s.pt.z); maxZ = Math.max(maxZ, s.pt.z);
-    }
-    this.mm = {
-      w, h,
-      scale: Math.min((w - 20) / (maxX - minX), (h - 20) / (maxZ - minZ)),
-      cx: (minX + maxX) / 2,
-      cz: (minZ + maxZ) / 2
-    };
-    const layer = document.createElement('canvas');
-    layer.width = w; layer.height = h;
-    const g = layer.getContext('2d');
-    g.strokeStyle = 'rgba(200,215,235,0.75)';
+    this.mm = { w, h, scale: w / 700 };   // the map shows ~700 m of road around the car
+  }
+
+  mmPoint(x, z) {
+    const m = this.mm, p = this.physics;
+    return [m.w / 2 + (x - p.pos.x) * m.scale, m.h / 2 + (z - p.pos.z) * m.scale];
+  }
+
+  drawMinimap() {
+    if (!this.minimapCtx || !this.mm) return;
+    const g = this.minimapCtx, m = this.mm, p = this.physics;
+    g.clearRect(0, 0, m.w, m.h);
+    g.save();
+    g.beginPath();
+    g.arc(m.w / 2, m.h / 2, m.w / 2 - 1, 0, Math.PI * 2);
+    g.clip();
+    g.fillStyle = 'rgba(12,18,28,0.72)';
+    g.fillRect(0, 0, m.w, m.h);
+
+    // road: only the samples near the car are drawn
+    const S = this.roadSamples, n = S.length;
+    const rad = m.w / 2 / m.scale, R2 = rad * rad * 1.7;
+    g.strokeStyle = 'rgba(205,218,238,0.85)';
     g.lineWidth = 3;
     g.lineJoin = 'round';
     g.beginPath();
-    this.roadSamples.forEach((s, i) => {
-      const [x, y] = this.mmPoint(s.pt.x, s.pt.z);
-      if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
-    });
-    g.closePath();
+    let pen = false;
+    for (let i = 0; i <= n; i++) {
+      const q = S[i % n].pt;
+      const dx = q.x - p.pos.x, dz = q.z - p.pos.z;
+      if (dx * dx + dz * dz > R2) { pen = false; continue; }
+      const x = m.w / 2 + dx * m.scale, y = m.h / 2 + dz * m.scale;
+      if (!pen) { g.moveTo(x, y); pen = true; } else g.lineTo(x, y);
+    }
     g.stroke();
     for (const j of this.junctions || []) {
       const [x1, y1] = this.mmPoint(j.x - 28, j.z);
       const [x2, y2] = this.mmPoint(j.x + 28, j.z);
       g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
     }
-    this.mm.layer = layer;
-  }
-
-  mmPoint(x, z) {
-    const m = this.mm;
-    return [(x - m.cx) * m.scale + m.w / 2, (z - m.cz) * m.scale + m.h / 2];
-  }
-
-  drawMinimap() {
-    if (!this.minimapCtx || !this.mm) return;
-    const g = this.minimapCtx;
-    g.clearRect(0, 0, this.mm.w, this.mm.h);
-    g.drawImage(this.mm.layer, 0, 0);
     g.fillStyle = '#ffb347';
     for (const tr of this.traffic) {
       if (!tr.mesh.visible) continue;
       const [x, y] = this.mmPoint(tr.mesh.position.x, tr.mesh.position.z);
       g.fillRect(x - 1.5, y - 1.5, 3, 3);
     }
-    const [px, py] = this.mmPoint(this.physics.pos.x, this.physics.pos.z);
     g.save();
-    g.translate(px, py);
-    g.rotate(Math.PI - this.physics.heading);
+    g.translate(m.w / 2, m.h / 2);
+    g.rotate(Math.PI - p.heading);
     g.fillStyle = '#2ea0ff';
     g.beginPath();
-    g.moveTo(0, -6); g.lineTo(4.5, 5); g.lineTo(-4.5, 5);
+    g.moveTo(0, -7); g.lineTo(5, 6); g.lineTo(-5, 6);
     g.closePath();
     g.fill();
+    g.restore();
     g.restore();
   }
 
@@ -1461,7 +1516,7 @@ class UltimateDriveSimulator {
     this.scene.add(sw);
 
     // Trees (2 instanced draw calls): sparse in the city, denser on highway/coast
-    const maxTrees = 280;
+    const maxTrees = 1100;
     const trunks = new THREE.InstancedMesh(
       new THREE.CylinderGeometry(0.16, 0.24, 2.4, 5).translate(0, 1.2, 0),
       new THREE.MeshStandardMaterial({ color: 0x4a3626, roughness: 1 }), maxTrees);
@@ -1472,12 +1527,12 @@ class UltimateDriveSimulator {
     for (let i = 0; i < S.length && n < maxTrees; i += 3) {
       const s = S[i];
       if (nearJunction(s.pt, 12)) continue;
-      const city = s.t < 0.3;
+      const city = s.t < this.zoneT.city;
       for (const side of [-1, 1]) {
         if (n >= maxTrees || R() < (city ? 0.7 : 0.3)) continue;
         const off = city ? this.halfRoad + 2.6 : this.halfRoad + 5 + R() * 18;
         dummy.position.copy(s.pt).addScaledVector(s.right, side * off);
-        dummy.position.y = s.pt.y;
+        dummy.position.y = Math.max(0, s.pt.y + 0.1 - Math.max(0, off - (this.halfRoad + 4.2)) / 1.7);   // stand on the embankment
         const sc = 0.8 + R() * 0.8;
         dummy.scale.setScalar(sc);
         dummy.rotation.set(0, R() * 6.28, 0);
@@ -1493,7 +1548,7 @@ class UltimateDriveSimulator {
     this.scene.add(trunks, crowns);
 
     // Glowing lamp heads on top of the streetlight poles (no real lights: cheap)
-    const lampCount = 100;
+    const lampCount = Math.floor(this.roadSamples.length / 5);
     this.lampMat = new THREE.MeshBasicMaterial({ color: 0xffe2b0 });
     const lamps = new THREE.InstancedMesh(new THREE.BoxGeometry(1.0, 0.14, 0.4), this.lampMat, lampCount);
     for (let i = 0; i < lampCount; i++) {
@@ -1561,8 +1616,8 @@ class UltimateDriveSimulator {
     if (fps < 40 && this.adaptT >= 1.5) {
       this.adaptT = 0;
       this.goodT = 0;
-      if (this.dynScale > 0.6) {
-        this.dynScale = Math.max(0.55, this.dynScale - 0.1);
+      if (this.dynScale > 0.82) {   // never below 80%: sharpness first, then drop the preset
+        this.dynScale = Math.max(0.8, this.dynScale - 0.05);
         this.updateViewportSize();
       } else if (fps < 30) {
         const i = PRESET_ORDER.indexOf(this.state.preset);
@@ -1604,7 +1659,7 @@ class UltimateDriveSimulator {
     };
     mgr.onLoad = () => this.finishLoading();
     const loader = new THREE.TextureLoader(mgr);
-    const aniso = Math.min(this.renderer.capabilities.getMaxAnisotropy(), IS_MOBILE ? 2 : 4);
+    const aniso = Math.min(this.renderer.capabilities.getMaxAnisotropy(), 4);
     const load = (file, apply) => loader.load(
       ASSET(file),
       (t) => {
@@ -1635,13 +1690,14 @@ class UltimateDriveSimulator {
       uv.needsUpdate = true;
       setMap(this.junctionMat, t);
       this.assets.asphalt = t;
+      this.applyBump();
     });
     load('textures/lane_markings_512.png', (t) => {
       this.drawLaneOverlay(t.image);
       t.dispose();   // only used as a source image for the overlay canvas
     });
     load('textures/grass_512.png', (t) => {
-      setMap(this.groundMat, tile(t, 266, 266), 0xa8c690);   // ~6 m tiles over the 1600 m ground
+      setMap(this.groundMat, tile(t, 1167, 1167), 0xa8c690);   // ~6 m tiles over the 7 km ground
     });
     load('textures/concrete_512.png', (t) => {
       setMap(this.sidewalkMat, tile(t, 1, 1), 0xb8bcc2);
@@ -1662,6 +1718,9 @@ class UltimateDriveSimulator {
       this.refreshEnvMap();
       this.assets.sky = t;
     });
+    // A real car model: drop a GLB at public/assets/vehicles/bmw_m4.glb and it is picked up automatically.
+    // If the file is missing the procedural car stays (see public/assets/vehicles/README.txt).
+    this.loadVehicleGLB(ASSET('vehicles/bmw_m4.glb'), new GLTFLoader(mgr));
     load('textures/carbon_fiber_512.png', (t) => { this.assets.carbon = tile(t, 2, 2); this.applyCarTextures(); });
     load('textures/tire_rubber_512.png', (t) => { this.assets.tire = tile(t, 6, 1); this.applyCarTextures(); });
 
@@ -1753,6 +1812,192 @@ class UltimateDriveSimulator {
       b.addEventListener('click', () => this.resetToRoad());
       tr.appendChild(b);
     }
+  }
+
+  // Soft contact shadow under the car: cheap, always on, keeps the car grounded even with real shadows off
+  buildBlobShadow() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(64, 64, 6, 64, 64, 64);
+    grad.addColorStop(0, 'rgba(0,0,0,0.9)');
+    grad.addColorStop(0.55, 'rgba(0,0,0,0.45)');
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 128, 128);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    this.blob = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.6, 5.6).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.5, depthWrite: false,
+        polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 })
+    );
+    this.blob.position.y = 0.03;
+    this.blob.renderOrder = 2;
+    this.carRig.root.add(this.blob);
+  }
+
+  disposeObject(o) {
+    o.traverse((c) => {
+      if (c.geometry) c.geometry.dispose();
+      const ms = Array.isArray(c.material) ? c.material : c.material ? [c.material] : [];
+      ms.forEach((m) => m.dispose());
+    });
+  }
+
+  async loadVehicleGLB(url, loader) {
+    try {
+      const gltf = await (loader || new GLTFLoader()).loadAsync(url);
+      return this.installVehicleModel(gltf.scene);
+    } catch (e) {
+      console.warn('[vehicle] GLB not loaded, keeping the procedural car:', url, e && e.message ? e.message : e);
+      return false;
+    }
+  }
+
+  // Fit a real car model into the existing rig: scale/orient it, take over the wheels, set up PBR materials.
+  // Conventions (needed from the model): wheel objects named *wheel*/*tire*/*rim*, body material named *paint*/*body*,
+  // glass material named *glass*, lights named *headlight*/*taillight*. Everything is optional; missing parts keep the
+  // procedural fallback.
+  installVehicleModel(model) {
+    const rig = this.carRig, root = rig.root;
+    const params = new URLSearchParams(location.search);
+    const holder = new THREE.Group();
+    holder.add(model);
+
+    // 1) orientation (length along Z, nose toward +Z; add ?carFlip=1 to the URL if it faces backwards), scale to 4.79 m, sit on the road
+    let box = new THREE.Box3().setFromObject(holder);
+    let size = box.getSize(new THREE.Vector3());
+    if (size.x > size.z) model.rotation.y = Math.PI / 2;
+    if (params.get('carFlip') === '1') model.rotation.y += Math.PI;
+    holder.updateMatrixWorld(true);
+    size = box.setFromObject(holder).getSize(new THREE.Vector3());
+    model.scale.multiplyScalar(4.79 / Math.max(size.z, 0.001));
+    holder.updateMatrixWorld(true);
+    box.setFromObject(holder);
+    const c0 = box.getCenter(new THREE.Vector3());
+    model.position.x -= c0.x;
+    model.position.z -= c0.z;
+    model.position.y -= box.min.y;
+    holder.updateMatrixWorld(true);
+
+    // 2) replace the procedural body (keep the real light sources)
+    const keep = new Set([rig.lights.headSpotL, rig.lights.headSpotL.target, rig.lights.headSpotR, rig.lights.headSpotR.target, rig.lights.tailPointLight]);
+    for (const ch of [...rig.bodyGroup.children]) {
+      if (keep.has(ch)) continue;
+      rig.bodyGroup.remove(ch);
+      this.disposeObject(ch);
+    }
+    rig.bodyGroup.add(holder);
+    rig.steeringWheelGroup = null;
+    root.updateMatrixWorld(true);
+
+    // 3) wheels: find 4 corners, give each a steer pivot + spin group so they stay planted while the body rolls
+    const wheelRe = /(wheel|tire|tyre|rim|rotor|brake_?disc)/i;
+    const nodes = [];
+    model.traverse((o) => {
+      if (o === model || !wheelRe.test(o.name || '')) return;
+      for (let p = o.parent; p && p !== model; p = p.parent) if (wheelRe.test(p.name || '')) return;
+      nodes.push(o);
+    });
+    const corners = new Map();
+    for (const n of nodes) {
+      const b = new THREE.Box3().setFromObject(n);
+      const c = b.getCenter(new THREE.Vector3());
+      if (Math.abs(c.x - 0) < 0.4) continue;
+      const key = `${c.z > 0 ? 'F' : 'R'}${c.x > 0 ? 'L' : 'R'}`;
+      if (!corners.has(key)) corners.set(key, { nodes: [], box: new THREE.Box3(), front: c.z > 0 });
+      const e = corners.get(key);
+      e.nodes.push(n);
+      e.box.union(b);
+    }
+    let wheelsOk = corners.size === 4;
+    if (wheelsOk) {
+      for (const e of corners.values()) {
+        const d = e.box.getSize(new THREE.Vector3());
+        if (Math.max(d.y, d.z) < 0.45 || Math.max(d.y, d.z) > 1.0) wheelsOk = false;
+      }
+    }
+    if (wheelsOk) {
+      const newWheels = [];
+      for (const e of corners.values()) {
+        const hub = holder.localToWorld(e.box.getCenter(new THREE.Vector3()).clone());
+        const steer = new THREE.Group(), spin = new THREE.Group();
+        steer.position.copy(root.worldToLocal(hub));
+        steer.add(spin);
+        root.add(steer);
+        root.updateMatrixWorld(true);
+        e.nodes.forEach((n) => spin.attach(n));
+        newWheels.push({ steerPivot: steer, spinGroup: spin, isFront: e.front, baseY: steer.position.y });
+      }
+      (rig.wheels || []).forEach((w) => { root.remove(w.steerPivot); this.disposeObject(w.steerPivot); });
+      rig.wheels = newWheels;
+    } else {
+      console.warn('[vehicle] could not find 4 wheel groups named *wheel*/*tire*/*rim*; keeping the procedural wheels');
+    }
+
+    // 4) PBR materials by name
+    const paint = [], heads = [], tails = [], seen = new Map();
+    model.traverse((o) => {
+      if (!o.isMesh) return;
+      o.castShadow = true;
+      const arr = Array.isArray(o.material) ? o.material : [o.material];
+      const out = arr.map((m) => {
+        if (seen.has(m)) return seen.get(m);
+        const n = `${m.name || ''} ${o.name || ''}`;
+        let r = m;
+        if (/glass|window|windshield|windscreen/i.test(n)) {
+          r = new THREE.MeshPhysicalMaterial({ color: 0x0b0f14, metalness: 0, roughness: 0.04, transparent: true, opacity: 0.38, envMapIntensity: 1.6, depthWrite: false });
+        } else if (/head.?(light|lamp)|\bdrl\b/i.test(n) && m.emissive) {
+          m.emissive.set(0xd8f0ff); m.emissiveIntensity = 3; heads.push(m);
+        } else if (/tail|brake.?light|rear.?(light|lamp)/i.test(n) && m.emissive) {
+          m.emissive.set(0xff1111); m.emissiveIntensity = 1.2; tails.push(m);
+        } else if (/tire|tyre|rubber/i.test(n)) {
+          m.roughness = 0.85; m.metalness = 0;
+        } else if (/paint|body|carpaint|exterior|shell/i.test(n)) {
+          r = m.isMeshPhysicalMaterial ? m : new THREE.MeshPhysicalMaterial({
+            color: m.color.clone(), map: m.map, normalMap: m.normalMap,
+            roughness: Math.min(m.roughness ?? 0.3, 0.35), metalness: Math.max(m.metalness ?? 0, 0.8) });
+          r.clearcoat = 1; r.clearcoatRoughness = 0.06;
+          paint.push(r);
+        }
+        seen.set(m, r);
+        return r;
+      });
+      o.material = Array.isArray(o.material) ? out : out[0];
+    });
+    rig.paintMats = paint;
+    rig.headMats = heads;
+    rig.tailMats = tails;
+    rig.materials = {
+      bodyPaintMat: paint[0] || rig.materials.bodyPaintMat,
+      headlightMat: heads[0] || rig.materials.headlightMat,
+      taillightMat: tails[0] || rig.materials.taillightMat,
+      reverseLightMat: rig.materials.reverseLightMat
+    };
+    if (!paint.length) console.warn('[vehicle] no material named *paint*/*body*: paint swatches will not recolour this model');
+    if (this.paintHex) this.setPaint(this.paintHex);
+    this.setHeadlights(this.state.headlightsOn);
+    this.applyGraphicsPreset(this.state.preset);
+    console.log(`[vehicle] model installed: wheels ${wheelsOk ? 'bound' : 'NOT bound'}, paint mats ${paint.length}, head ${heads.length}, tail ${tails.length}`);
+    return true;
+  }
+
+  // Asphalt micro-relief from the albedo (High/Ultra only: costs a little fill rate)
+  applyBump() {
+    const want = this.cfg && this.cfg.bump && this.assets.asphalt ? this.assets.asphalt : null;
+    const m = this.roadMaterial;
+    if (m.bumpMap !== want) { m.bumpMap = want; m.bumpScale = 0.3; m.needsUpdate = true; }
+  }
+
+  tAtPoint(x, z) {
+    let best = 0, bd = Infinity;
+    for (let i = 0; i < this.roadSamples.length; i++) {
+      const q = this.roadSamples[i].pt;
+      const d = (q.x - x) * (q.x - x) + (q.z - z) * (q.z - z);
+      if (d < bd) { bd = d; best = i; }
+    }
+    return this.roadSamples[best].t;
   }
 
   // Free GPU memory (page hide / unload)
@@ -1978,10 +2223,10 @@ class UltimateDriveSimulator {
       });
     }
     if (rig.steeringWheelGroup) rig.steeringWheelGroup.rotation.z = -p.steerAngle * 4;
-    if (rig.materials) {
-      rig.materials.taillightMat.emissiveIntensity = this.input.brake ? 4 : 1.2;
-      rig.materials.reverseLightMat.emissiveIntensity = p.speedKmh < -1 ? 2.5 : 0;
-    }
+    const tm = rig.tailMats || (rig.materials ? [rig.materials.taillightMat] : []);
+    const be = this.input.brake ? 4 : 1.2;
+    for (const m of tm) m.emissiveIntensity = be;
+    if (rig.materials && rig.materials.reverseLightMat) rig.materials.reverseLightMat.emissiveIntensity = p.speedKmh < -1 ? 2.5 : 0;
     if (rig.lights) rig.lights.tailPointLight.intensity = this.input.brake ? 3 : 1.2;
   }
 
@@ -2106,8 +2351,13 @@ class UltimateDriveSimulator {
       if (this.state.introTimer > 6) this.endIntro();
     }
 
-    if (this.state.mode === 'DRIVING') this.updatePhysics(dt);
-    else this.physics.vel.multiplyScalar(Math.max(0, 1 - dt * 3));
+    if (this.state.mode === 'DRIVING') {
+      this.accum = Math.min(this.accum + dt, 0.1);
+      while (this.accum >= PHYS_STEP) { this.updatePhysics(PHYS_STEP); this.accum -= PHYS_STEP; }
+    } else {
+      this.accum = 0;
+      this.physics.vel.multiplyScalar(Math.max(0, 1 - dt * 3));
+    }
 
     this.updateTraffic(dt);
     this.syncCarMesh();
