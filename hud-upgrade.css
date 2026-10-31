@@ -1,183 +1,247 @@
 /* ==========================================================================
-   HUD upgrade: glass panels, speedometer dial, icon sprites, paint swatches.
-   Imported from game.js. Selectors are prefixed with "html body" so they win
-   over style.css regardless of stylesheet order. Asset URLs are public files
-   (public/assets/...), which Vite rewrites for the configured base path.
+   BMW M-Live Cockpit HUD Upgrade:
+   Dark glassmorphic panels, vector SVG speedometer & tachometer arc,
+   shift-zone warning glow, brake/handbrake indicators, paint swatches,
+   and safe-area responsive mobile controls. Zero external PNG dependencies.
    ========================================================================== */
 
-/* ---- Glass panels (9-slice so any size keeps crisp corners) ---- */
+/* ---- Glassmorphic M-Performance Panels ---- */
 html body .instrument-cluster,
 html body .hud-top-center,
-html body .minimap-wrapper {
-  background: none;
-  border: 0;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  isolation: isolate;
-}
-html body .hud-top-center,
-html body .minimap-wrapper { position: relative; }
-html body .instrument-cluster::before,
-html body .hud-top-center::before,
-html body .minimap-wrapper::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  border: 14px solid transparent;
-  border-image: url('/assets/ui/hud_glass_panel.png') 44 fill / 14px stretch;
+html body .minimap-wrapper,
+html body .hud-icon-btn {
+  background: linear-gradient(165deg, rgba(16, 22, 34, 0.88) 0%, rgba(7, 10, 16, 0.94) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-/* ---- Instrument cluster with speedometer dial ---- */
+html body .instrument-cluster::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16%;
+  right: 16%;
+  height: 2px;
+  background: linear-gradient(90deg, #00a8ff 0%, #262262 50%, #e41e26 100%);
+  border-radius: 2px;
+  opacity: 0.9;
+}
+
+/* ---- Instrument Cluster with Vector Dial & Needle ---- */
 html body .instrument-cluster {
-  --dial: 168px;
-  width: calc(var(--dial) + 84px);
-  padding: 6px 12px 9px;
+  --dial: 176px;
+  width: calc(var(--dial) + 92px);
+  padding: 8px 14px 10px;
   display: flex;
   flex-direction: column;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
 }
+
+html body .instrument-cluster.redline-shift {
+  border-color: rgba(228, 30, 38, 0.85);
+  box-shadow: 0 0 26px rgba(228, 30, 38, 0.45), inset 0 0 12px rgba(228, 30, 38, 0.22);
+}
+
 .dial-wrap {
   position: relative;
   flex: none;
   width: var(--dial);
-  height: calc(var(--dial) * 0.547);
-  margin: 0 auto;
-  background: url('/assets/ui/speedometer_dial.png') no-repeat top center / var(--dial) var(--dial);
+  height: calc(var(--dial) * 0.56);
+  margin: 0 auto 2px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 115'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='0'%3E%3Cstop offset='0%25' stop-color='%2300a8ff'/%3E%3Cstop offset='72%25' stop-color='%2300a8ff'/%3E%3Cstop offset='86%25' stop-color='%23ff9f1a'/%3E%3Cstop offset='100%25' stop-color='%23e41e26'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M 20 100 A 80 80 0 0 1 180 100' fill='none' stroke='rgba(255,255,255,0.12)' stroke-width='9' stroke-linecap='round'/%3E%3Cpath d='M 20 100 A 80 80 0 0 1 180 100' fill='none' stroke='url(%23g)' stroke-width='5' stroke-linecap='round' stroke-dasharray='4 6'/%3E%3Cpath d='M 32 100 A 68 68 0 0 1 168 100' fill='none' stroke='rgba(0,168,255,0.2)' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: top center;
+  background-size: 100% 100%;
 }
+
 .dial-needle {
   position: absolute;
   left: 50%;
-  bottom: calc(var(--dial) * 0.0476);
-  width: max(3px, calc(var(--dial) * 0.024));
-  height: calc(var(--dial) * 0.333);
-  margin-left: calc(var(--dial) * -0.012);
+  bottom: calc(var(--dial) * 0.06);
+  width: 3px;
+  height: calc(var(--dial) * 0.36);
+  margin-left: -1.5px;
   transform-origin: 50% 100%;
-  transform: rotate(-65.4deg);
-  background: linear-gradient(to top, transparent 0 66%, #00a8ff 66%, #a8e0ff 100%);
+  transform: rotate(-68deg);
+  background: linear-gradient(to top, rgba(0, 168, 255, 0.15) 0%, #00a8ff 45%, #ffffff 100%);
   border-radius: 2px;
-  filter: drop-shadow(0 0 3px rgba(0, 168, 255, 0.85));
-  transition: transform 80ms linear;
+  filter: drop-shadow(0 0 5px rgba(0, 168, 255, 0.9));
+  transition: transform 65ms linear;
   will-change: transform;
 }
-/* The readout row is flattened so gear / speed / rpm can be placed against the dial */
-html body .instrument-cluster .cluster-readout { display: contents; }
+
+/* Status pills inside the instrument cluster */
+.cluster-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.cluster-pill {
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #8e9fb5;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cluster-pill.shift-pill.active {
+  background: rgba(228, 30, 38, 0.28);
+  color: #ff6b6b;
+  border-color: #e41e26;
+  box-shadow: 0 0 8px rgba(228, 30, 38, 0.5);
+}
+
+.cluster-pill.brake-pill.active {
+  background: rgba(255, 50, 50, 0.28);
+  color: #ff5252;
+  border-color: #ff3838;
+}
+
+/* Readout layout aligned over the vector dial */
+html body .instrument-cluster .cluster-readout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -8px;
+  position: relative;
+  z-index: 2;
+}
+
 html body .instrument-cluster .speed-box {
-  position: absolute;
-  left: 50%;
-  top: calc(6px + var(--dial) * 0.235);
-  transform: translateX(-50%);
   text-align: center;
   line-height: 1;
 }
-html body .instrument-cluster #hud-speed { font-size: 1.7rem; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); }
-html body .instrument-cluster .speed-box small { display: block; margin-top: 2px; }
-html body .instrument-cluster .gear-box,
+
+html body .instrument-cluster #hud-speed {
+  font-size: 1.85rem;
+  font-weight: 900;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
+}
+
+html body .instrument-cluster .speed-box small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+}
+
+html body .instrument-cluster .gear-box {
+  font-size: 1.35rem;
+  min-width: 34px;
+  text-align: center;
+  padding: 3px 9px;
+  border: 1px solid rgba(0, 168, 255, 0.35);
+}
+
 html body .instrument-cluster .rpm-text {
-  position: absolute;
-  top: calc(6px + var(--dial) * 0.36);
-  pointer-events: none;
-}
-html body .instrument-cluster .gear-box { left: 12px; font-size: 1.25rem; padding: 2px 9px; }
-html body .instrument-cluster .rpm-text { right: 12px; line-height: 1.7; text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); }
-html body .instrument-cluster .rpm-bar-container { margin: 8px 0 0; }
-html body .hud-top-center { padding: 8px 18px; white-space: nowrap; }
-html body .hud-top-center span { white-space: nowrap; }
-html body #hud-fps, html body #hud-env-badge { text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8); }
-
-@media (max-height: 450px) {
-  html body .instrument-cluster { --dial: 138px; bottom: 6px; padding: 5px 10px 7px; }
+  text-align: right;
+  font-size: 0.78rem;
+  font-weight: 700;
+  min-width: 68px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
 }
 
-/* ---- Icon sprite (game_icons.png = 4 icons: nitro, camera, weather, reset) ---- */
-#btn-hud-camera::before,
-#btn-hud-reset::before,
-#hud-env-badge::before {
-  content: '';
-  display: inline-block;
-  width: 20px;
-  height: 20px;
-  margin: -4px 4px -4px -3px;
-  vertical-align: middle;
-  background: url('/assets/ui/game_icons.png') no-repeat 0 0 / 80px 20px;
+html body .instrument-cluster .rpm-bar-container {
+  margin: 4px 0 6px;
+  height: 6px;
 }
-#btn-hud-camera::before { background-position: -20px 0; }
-#hud-env-badge::before { background-position: -40px 0; }
-#btn-hud-reset::before { background-position: -60px 0; }
 
-/* ---- Paint swatches (paint_swatch_atlas.png = 3 x 2 colour cells) ---- */
+/* ---- Paint Swatch Dots ---- */
 .chip-btn[data-paint]::before {
   content: '';
   display: inline-block;
   width: 12px;
   height: 12px;
-  margin-right: 6px;
+  margin-right: 7px;
   vertical-align: -2px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  background: var(--sw-bg, #777);
-}
-.chip-btn.has-swatch[data-paint]::before {
-  background: url('/assets/textures/paint_swatch_atlas.png') var(--sw-x, 0%) var(--sw-y, 0%) / 300% 204.8% no-repeat;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  background: var(--sw-bg, #444);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.35);
 }
 
+/* ---- Safe Areas & Responsive Touch Ergonomics ---- */
+html body #game-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
 
-/* ==========================================================================
-   Phase update: canvas sizing, safe areas, touch controls, portrait layout
-   ========================================================================== */
-
-/* The canvas must be exactly the VISIBLE viewport. 100vh is taller than the visible area on Android
-   Chrome while the URL bar is showing, which stretched (blurred) the 3D view. */
-html body #game-canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
-
-/* Respect notches / rounded corners */
 html body .hud-top {
   padding-top: max(12px, env(safe-area-inset-top));
   padding-left: max(18px, env(safe-area-inset-left));
   padding-right: max(18px, env(safe-area-inset-right));
 }
-html body .touch-controls-left { left: max(18px, env(safe-area-inset-left)); bottom: max(18px, env(safe-area-inset-bottom)); }
-html body .touch-controls-right { right: max(18px, env(safe-area-inset-right)); bottom: max(18px, env(safe-area-inset-bottom)); }
-html body .instrument-cluster { bottom: max(14px, env(safe-area-inset-bottom)); }
 
-/* Touch controls: larger targets (>= 9 mm), clearer shape, obvious pressed state */
+html body .touch-controls-left {
+  left: max(18px, env(safe-area-inset-left));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  gap: 14px;
+}
+
+html body .touch-controls-right {
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  gap: 12px;
+}
+
+html body .instrument-cluster {
+  bottom: max(12px, env(safe-area-inset-bottom));
+}
+
 html body .touch-btn {
-  background: linear-gradient(180deg, rgba(34, 44, 60, 0.8), rgba(14, 18, 26, 0.86));
-  border: 1.5px solid rgba(255, 255, 255, 0.34);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  -webkit-tap-highlight-color: transparent;
+  background: linear-gradient(180deg, rgba(30, 40, 58, 0.82), rgba(11, 15, 24, 0.9));
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.14);
   touch-action: none;
-  transition: background 90ms, border-color 90ms, box-shadow 90ms, transform 90ms;
+  transition: background 80ms ease, border-color 80ms ease, box-shadow 80ms ease, transform 80ms ease;
 }
+
 html body .touch-btn.pressed {
-  background: linear-gradient(180deg, rgba(0, 168, 255, 0.55), rgba(0, 102, 177, 0.6));
+  background: linear-gradient(180deg, rgba(0, 168, 255, 0.6), rgba(0, 102, 177, 0.68));
   border-color: #00a8ff;
-  box-shadow: 0 0 20px rgba(0, 168, 255, 0.6);
-  transform: scale(0.95);
+  box-shadow: 0 0 22px rgba(0, 168, 255, 0.65);
+  transform: scale(0.94);
 }
-html body .steer-btn { width: 88px; height: 88px; }
+
+html body .ebrake-btn.pressed {
+  background: linear-gradient(180deg, rgba(228, 30, 38, 0.65), rgba(145, 16, 22, 0.72));
+  border-color: #ff4757;
+  box-shadow: 0 0 22px rgba(228, 30, 38, 0.65);
+}
+
+html body .steer-btn { width: 86px; height: 86px; }
 html body .ebrake-btn { width: 72px; height: 64px; }
-html body .pedal-brake { width: 80px; height: 100px; }
-html body .pedal-gas { width: 86px; height: 128px; }
-html body .touch-controls-right { gap: 12px; }
-html body .touch-controls-left { gap: 14px; }
+html body .pedal-brake { width: 78px; height: 98px; }
+html body .pedal-gas { width: 86px; height: 126px; }
 
-/* Short / narrow landscape phones: keep controls clear of the centre cluster */
-@media (orientation: landscape) and (max-width: 780px), (orientation: landscape) and (max-height: 380px) {
-  html body .steer-btn { width: 70px; height: 70px; }
-  html body .ebrake-btn { width: 58px; height: 54px; }
-  html body .pedal-brake { width: 64px; height: 78px; }
-  html body .pedal-gas { width: 70px; height: 104px; }
-  html body .hud-icon-btn { padding: 6px 8px; font-size: 0.64rem; }
+/* Compact landscape phones */
+@media (orientation: landscape) and (max-width: 820px), (orientation: landscape) and (max-height: 410px) {
+  html body .instrument-cluster { --dial: 142px; padding: 6px 11px 8px; }
+  html body .steer-btn { width: 72px; height: 72px; }
+  html body .ebrake-btn { width: 60px; height: 54px; }
+  html body .pedal-brake { width: 66px; height: 82px; }
+  html body .pedal-gas { width: 74px; height: 108px; }
+  html body .hud-icon-btn { padding: 6px 9px; font-size: 0.64rem; }
 }
 
-/* Portrait fallback: buttons wrap under the minimap, the cluster sits above the controls */
+/* Portrait layout fallback if user dismisses the landscape prompt */
 @media (orientation: portrait) {
   html body .hud-top { flex-wrap: wrap; gap: 8px; }
   html body .hud-top-right { order: 3; width: 100%; justify-content: flex-start; }
-  html body .hud-icon-btn { padding: 7px 9px; font-size: 0.64rem; }
-  html body .instrument-cluster { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 138px); }
-  html body .touch-controls-left { left: max(10px, env(safe-area-inset-left)); gap: 10px; }
-  html body .touch-controls-right { right: max(10px, env(safe-area-inset-right)); gap: 8px; }
+  html body .hud-icon-btn { padding: 6px 9px; font-size: 0.64rem; }
+  html body .instrument-cluster { bottom: calc(max(14px, env(safe-area-inset-bottom)) + 136px); }
+  html body .touch-controls-left { left: max(12px, env(safe-area-inset-left)); gap: 10px; }
+  html body .touch-controls-right { right: max(12px, env(safe-area-inset-right)); gap: 8px; }
   html body .steer-btn { width: 70px; height: 70px; }
   html body .ebrake-btn { width: 58px; height: 54px; }
   html body .pedal-brake { width: 64px; height: 84px; }
