@@ -1,8 +1,7 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  // Relative base path ensures assets resolve cleanly on both Netlify root (/)
-  // and GitHub Pages project sub-paths (e.g., /repo-name/).
+  // Relative base works on Netlify (site root) and GitHub Pages (/repo-name/)
   base: './',
   build: {
     outDir: 'dist',
