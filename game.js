@@ -2867,13 +2867,14 @@ class UltimateDriveSimulator {
       const spd = Math.min(1, Math.abs(p.speedKmh) / 200);
 
       if (idx === 0 || idx === 1) {
-        const back = (idx === 0 ? 7.8 : 5.3) + spd * 1.6;
-        const up = (idx === 0 ? 3.0 : 1.95) - spd * 0.25;
+        // Elevated chase framing: look slightly lower so the car renders higher on screen above the bottom HUD arch
+        const back = (idx === 0 ? 6.8 : 4.7) + spd * 1.4;
+        const up = (idx === 0 ? 2.45 : 1.72) - spd * 0.18;
         _vWantPos.copy(p.pos).addScaledVector(_vForward, -back).addScaledVector(_vLeft, p.angularVel * -0.85);
         _vWantPos.y += up;
-        _vWantLook.copy(p.pos).addScaledVector(_vForward, 4.2 + spd * 3.0).addScaledVector(_vLeft, p.angularVel * 1.5);
-        _vWantLook.y += 1.05;
-        fov += spd * 13;
+        _vWantLook.copy(p.pos).addScaledVector(_vForward, 4.5 + spd * 3.0).addScaledVector(_vLeft, p.angularVel * 1.5);
+        _vWantLook.y += 0.42;
+        fov += spd * 12;
       } else if (idx === 2) {
         snap = true;
         _vWantPos.copy(p.pos).addScaledVector(_vForward, 1.15);
@@ -3074,6 +3075,109 @@ class UltimateDriveSimulator {
 // ============================================================================
 function boot() {
   try {
+    if (!document.getElementById('bmw-compact-hud-fix')) {
+      const st = document.createElement('style');
+      st.id = 'bmw-compact-hud-fix';
+      st.textContent = `
+html body .instrument-cluster {
+  position: absolute !important;
+  bottom: max(2px, env(safe-area-inset-bottom)) !important;
+  left: 50% !important;
+  transform: translateX(-50%) scale(0.74) !important;
+  transform-origin: bottom center !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  gap: 2px !important;
+  padding: 0 6px 2px !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  pointer-events: none !important;
+}
+html body .instrument-cluster::before,
+html body .instrument-cluster::after {
+  display: none !important;
+}
+html body .instrument-cluster.redline-shift .cluster-center-arch {
+  filter: drop-shadow(0 0 14px rgba(228, 30, 38, 0.75)) !important;
+}
+html body .cluster-wing {
+  width: 54px !important;
+  padding: 4px 4px 3px !important;
+  background: linear-gradient(180deg, rgba(10, 15, 26, 0.78) 0%, rgba(5, 8, 14, 0.92) 100%) !important;
+  border: 1px solid rgba(0, 168, 255, 0.28) !important;
+  border-radius: 10px 10px 6px 6px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55) !important;
+}
+html body .wing-left { transform: skewX(-10deg); }
+html body .wing-left > * { transform: skewX(10deg); }
+html body .wing-right { transform: skewX(10deg); }
+html body .wing-right > * { transform: skewX(-10deg); }
+html body .wing-icon { width: 14px !important; height: 14px !important; }
+html body .cluster-wing strong { font-size: 0.7rem !important; }
+html body .cluster-center-arch {
+  position: relative !important;
+  width: 212px !important;
+  padding-top: 2px !important;
+  background: radial-gradient(ellipse 52% 66% at 50% 82%, rgba(7, 11, 20, 0.88) 0%, rgba(7, 11, 20, 0.58) 66%, rgba(7, 11, 20, 0) 100%) !important;
+}
+html body .tach-svg {
+  width: 212px !important;
+  height: 94px !important;
+}
+html body .cluster-readout {
+  top: 30px !important;
+  gap: 10px !important;
+  padding-left: 12px !important;
+}
+html body #hud-speed { font-size: 2.15rem !important; line-height: 0.9 !important; }
+html body #hud-speed-unit { font-size: 0.55rem !important; margin-top: 2px !important; }
+html body .drive-mode-char { font-size: 1.15rem !important; }
+html body .gear-box { font-size: 1.25rem !important; }
+html body .rpm-bar-container { width: 70% !important; height: 3.5px !important; margin-top: -5px !important; }
+html body .cluster-bottom-meta { width: 84% !important; margin-top: 2px !important; }
+html body .rpm-caption { font-size: 0.52rem !important; }
+html body .hud-top {
+  padding-top: max(6px, env(safe-area-inset-top)) !important;
+  padding-left: max(12px, env(safe-area-inset-left)) !important;
+  padding-right: max(12px, env(safe-area-inset-right)) !important;
+}
+html body .minimap-ring { width: 88px !important; height: 88px !important; }
+html body #zone-label { font-size: 0.5rem !important; padding: 1px 6px !important; margin-top: 2px !important; }
+html body .hud-top-right-stack { gap: 4px !important; }
+html body .hud-circle-btn { height: 30px !important; min-width: 30px !important; padding: 0 7px !important; border-radius: 8px !important; font-size: 0.58rem !important; }
+html body .hud-telemetry-card { padding: 4px 8px !important; min-width: 94px !important; gap: 2px !important; }
+html body .tele-row { font-size: 0.6rem !important; gap: 5px !important; }
+html body .touch-controls-left { left: max(12px, env(safe-area-inset-left)) !important; bottom: max(8px, env(safe-area-inset-bottom)) !important; gap: 10px !important; }
+html body .touch-controls-right { right: max(12px, env(safe-area-inset-right)) !important; bottom: max(8px, env(safe-area-inset-bottom)) !important; gap: 6px !important; }
+html body .steer-btn { width: 62px !important; height: 62px !important; }
+html body .ebrake-btn { width: 42px !important; height: 42px !important; font-size: 0.74rem !important; }
+html body .pedals-row { gap: 8px !important; }
+html body .pedal-brake { width: 52px !important; height: 64px !important; }
+html body .pedal-gas { width: 56px !important; height: 86px !important; }
+@media (orientation: landscape) and (max-height: 370px) {
+  html body .instrument-cluster { transform: translateX(-50%) scale(0.62) !important; bottom: 0px !important; }
+  html body .minimap-ring { width: 74px !important; height: 74px !important; }
+  html body .steer-btn { width: 54px !important; height: 54px !important; }
+  html body .ebrake-btn { width: 36px !important; height: 36px !important; font-size: 0.68rem !important; }
+  html body .pedal-brake { width: 46px !important; height: 56px !important; }
+  html body .pedal-gas { width: 50px !important; height: 74px !important; }
+  html body .hud-telemetry-card { padding: 3px 6px !important; }
+  html body .tele-row { font-size: 0.54rem !important; }
+}
+@media (min-width: 960px) and (min-height: 540px) {
+  html body .instrument-cluster { transform: translateX(-50%) scale(0.92) !important; bottom: 8px !important; }
+  html body .minimap-ring { width: 124px !important; height: 124px !important; }
+  html body .steer-btn { width: 76px !important; height: 76px !important; }
+  html body .ebrake-btn { width: 52px !important; height: 52px !important; }
+  html body .pedal-brake { width: 66px !important; height: 82px !important; }
+  html body .pedal-gas { width: 70px !important; height: 110px !important; }
+}
+`;
+      document.head.appendChild(st);
+    }
     window.__game = new UltimateDriveSimulator();
   } catch (err) {
     console.error('Failed to start simulator:', err);
