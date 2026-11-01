@@ -13,11 +13,10 @@ function createCockpitScreenTexture() {
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
 
-  const draw = (speedKmh = 0, gear = '1', rpm = 850) => {
+  const draw = (speedVal = 0, gear = '1', rpm = 850, unitLabel = 'KM/H') => {
     ctx.fillStyle = '#060a12';
     ctx.fillRect(0, 0, 512, 128);
 
-    // Subtle M border accent
     const grad = ctx.createLinearGradient(0, 0, 512, 0);
     grad.addColorStop(0, '#00a8ff');
     grad.addColorStop(0.5, '#262262');
@@ -25,15 +24,13 @@ function createCockpitScreenTexture() {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 512, 4);
 
-    // Left Gauge: Speed
     ctx.fillStyle = '#8e9fb5';
     ctx.font = 'bold 14px sans-serif';
-    ctx.fillText('SPEED KM/H', 28, 34);
+    ctx.fillText(`SPEED ${unitLabel}`, 28, 34);
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 52px sans-serif';
-    ctx.fillText(String(Math.round(Math.abs(speedKmh))), 28, 88);
+    ctx.fillText(String(Math.round(Math.abs(speedVal))), 28, 88);
 
-    // Center: Gear Indicator
     ctx.fillStyle = 'rgba(0, 168, 255, 0.16)';
     ctx.fillRect(216, 22, 80, 84);
     ctx.strokeStyle = '#00a8ff';
@@ -45,7 +42,6 @@ function createCockpitScreenTexture() {
     ctx.fillText(String(gear), 256, 84);
     ctx.textAlign = 'left';
 
-    // Right: RPM + Bar
     ctx.fillStyle = '#8e9fb5';
     ctx.font = 'bold 14px sans-serif';
     ctx.fillText('ENGINE RPM', 330, 34);
@@ -62,7 +58,7 @@ function createCockpitScreenTexture() {
     tex.needsUpdate = true;
   };
 
-  draw(0, '1', 850);
+  draw(0, '1', 850, 'KM/H');
   return { tex, draw };
 }
 
@@ -77,9 +73,8 @@ export function buildProceduralBMW() {
   const bodyGroup = new THREE.Group();
   root.add(bodyGroup);
 
-  // PBR Materials
   const bodyPaintMat = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color('#08090c'),
+    color: new THREE.Color('#0a2b6e'),
     metalness: 0.86,
     roughness: 0.16,
     clearcoat: 1.0,
@@ -106,9 +101,6 @@ export function buildProceduralBMW() {
     roughness: 0.58
   });
 
-  // Exterior glass: DoubleSide = false (FrontSide only) so from inside the cockpit
-  // looking out, the windshield does not occlude or darken the road ahead, while
-  // external camera views still show realistic tinted reflections.
   const glassMat = new THREE.MeshPhysicalMaterial({
     color: 0x091018,
     metalness: 0.08,
@@ -154,19 +146,15 @@ export function buildProceduralBMW() {
     let y = pos.getY(i);
     let z = pos.getZ(i);
 
-    // Aerodynamic front nose slope
     if (z > 1.2 && y > 0) {
       y -= Math.pow((z - 1.2) / 1.16, 1.35) * 0.16;
     }
-    // Slight rear decklid kick-up
     if (z < -1.6 && y > 0) {
       y += ((Math.abs(z) - 1.6) / 0.76) * 0.04;
     }
-    // Taper front and rear bumpers smoothly
     if (Math.abs(z) > 1.92) {
       x *= 0.90;
     }
-    // Pronounced M-fender flares around front and rear wheel arches
     const distFront = Math.abs(z - 1.42);
     const distRear = Math.abs(z + 1.38);
     if (distFront < 0.56 && Math.abs(x) > 0.72) {
@@ -175,7 +163,6 @@ export function buildProceduralBMW() {
     if (distRear < 0.60 && Math.abs(x) > 0.72) {
       x *= 1.0 + Math.cos((distRear / 0.60) * (Math.PI * 0.5)) * 0.075;
     }
-    // Sculpted door waist pinch
     if (Math.abs(z) < 0.75 && Math.abs(y) < 0.12 && Math.abs(x) > 0.85) {
       x *= 0.965;
     }
@@ -188,7 +175,7 @@ export function buildProceduralBMW() {
   lowerBodyMesh.receiveShadow = true;
   bodyGroup.add(lowerBodyMesh);
 
-  // Dark wheel well liners so the body never looks hollow around tires
+  // Dark wheel well liners
   const wellMat = new THREE.MeshBasicMaterial({ color: 0x050608 });
   const wellGeo = new THREE.CylinderGeometry(0.41, 0.41, 0.34, 16, 1, false, 0, Math.PI);
   wellGeo.rotateZ(Math.PI / 2);
@@ -203,7 +190,7 @@ export function buildProceduralBMW() {
     bodyGroup.add(wMesh);
   });
 
-  // Side Skirts (Gloss Carbon) & Door Seams / Handles
+  // Side Skirts & Door Trim
   for (const side of [-1, 1]) {
     const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.065, 2.05), carbonMat);
     skirt.position.set(side * 0.97, 0.29, 0.02);
@@ -218,7 +205,7 @@ export function buildProceduralBMW() {
     bodyGroup.add(gill);
   }
 
-  // 2. Sculpted Powerdome Hood with Twin Recessed Channels
+  // 2. Sculpted Powerdome Hood
   const hoodDomeGeo = new THREE.BoxGeometry(1.18, 0.065, 1.38, 4, 1, 4);
   const hoodDome = new THREE.Mesh(hoodDomeGeo, bodyPaintMat);
   hoodDome.position.set(0, 0.805, 1.24);
@@ -233,7 +220,7 @@ export function buildProceduralBMW() {
     bodyGroup.add(vent);
   }
 
-  // 3. Fastback Greenhouse (Cabin), Pillars & Carbon Roof
+  // 3. Fastback Greenhouse (Cabin) & Carbon Roof
   const cabinShape = new THREE.Shape();
   cabinShape.moveTo(-1.58, 0);
   cabinShape.lineTo(-0.78, 0.49);
@@ -256,7 +243,6 @@ export function buildProceduralBMW() {
   cabinMesh.castShadow = true;
   bodyGroup.add(cabinMesh);
 
-  // Carbon Fiber Roof Panel with twin aerodynamic fins
   const roofGeo = new THREE.BoxGeometry(1.36, 0.042, 1.18);
   const roofMesh = new THREE.Mesh(roofGeo, carbonMat);
   roofMesh.position.set(0, 1.295, -0.18);
@@ -269,7 +255,7 @@ export function buildProceduralBMW() {
     bodyGroup.add(roofRail);
   }
 
-  // 4. Recognizable Twin-Kidney Vertical Grille + Lower Mesh
+  // 4. Twin-Kidney Vertical Grille + Splitter
   const kidneyGroup = new THREE.Group();
   for (const side of [-1, 1]) {
     const frameGeo = new THREE.BoxGeometry(0.28, 0.38, 0.08);
@@ -286,7 +272,6 @@ export function buildProceduralBMW() {
   }
   bodyGroup.add(kidneyGroup);
 
-  // Front Carbon Splitter & Sculpted Side Air Curtains
   const splitterGeo = new THREE.BoxGeometry(1.88, 0.048, 0.28);
   const splitter = new THREE.Mesh(splitterGeo, carbonMat);
   splitter.position.set(0, 0.285, 2.30);
@@ -304,7 +289,7 @@ export function buildProceduralBMW() {
     bodyGroup.add(canard);
   }
 
-  // 5. Dual-Halo LED Headlights ("Angel Eyes")
+  // 5. Dual-Halo LED Headlights
   const createHeadlightCluster = (side) => {
     const group = new THREE.Group();
     const housingGeo = new THREE.BoxGeometry(0.43, 0.12, 0.17);
@@ -368,10 +353,9 @@ export function buildProceduralBMW() {
     bodyGroup.add(mirrorGroup);
   }
 
-  // 8. Detailed Cockpit Interior (Visible from Cockpit Camera & Exterior)
+  // 8. Detailed Cockpit Interior
   const cockpitGroup = new THREE.Group();
 
-  // Floor & Center Tunnel Console
   const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.06, 1.85), interiorTrimMat);
   floorMesh.position.set(0, 0.36, -0.10);
   cockpitGroup.add(floorMesh);
@@ -385,7 +369,6 @@ export function buildProceduralBMW() {
   shifterMesh.rotation.x = -0.15;
   cockpitGroup.add(shifterMesh);
 
-  // Sculpted Upper & Lower Dashboard + Gauge Hood
   const dashGeo = new THREE.BoxGeometry(1.52, 0.28, 0.52);
   const dashMesh = new THREE.Mesh(dashGeo, leatherMat);
   dashMesh.position.set(0, 0.80, 0.46);
@@ -395,7 +378,6 @@ export function buildProceduralBMW() {
   dashTrim.position.set(0, 0.88, 0.42);
   cockpitGroup.add(dashTrim);
 
-  // Curved BMW iDrive Live Digital Screen (updates dynamically with speed/gear/RPM)
   const cockpitScreen = createCockpitScreenTexture();
   const screenMat = new THREE.MeshBasicMaterial({ map: cockpitScreen.tex });
   const screenGeo = new THREE.BoxGeometry(0.74, 0.15, 0.025);
@@ -404,7 +386,6 @@ export function buildProceduralBMW() {
   screenMesh.rotation.y = 0.08;
   cockpitGroup.add(screenMesh);
 
-  // Interior A-Pillars & Rearview Mirror (frames the windshield view in Cockpit Cam)
   for (const side of [-1, 1]) {
     const aPillar = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.52, 0.065), interiorTrimMat);
     aPillar.position.set(side * 0.70, 1.05, 0.42);
@@ -412,7 +393,6 @@ export function buildProceduralBMW() {
     aPillar.rotation.z = side * 0.18;
     cockpitGroup.add(aPillar);
 
-    // M Carbon Bucket Seats (Driver + Passenger)
     const seatGroup = new THREE.Group();
     const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.10, 0.48), leatherMat);
     cushion.position.set(0, 0.46, -0.18);
@@ -430,7 +410,6 @@ export function buildProceduralBMW() {
   rearViewMirror.position.set(0, 1.21, 0.25);
   cockpitGroup.add(rearViewMirror);
 
-  // Articulated M-Sport Steering Wheel with Shift Paddles & Red 12-o'clock Marker
   const steeringWheelGroup = new THREE.Group();
   const rimGeo = new THREE.TorusGeometry(0.165, 0.024, 10, 28);
   const rimMesh = new THREE.Mesh(rimGeo, leatherMat);
@@ -465,7 +444,7 @@ export function buildProceduralBMW() {
   cockpitGroup.add(steeringWheelGroup);
   bodyGroup.add(cockpitGroup);
 
-  // 9. Four Separate Articulated Wheels (Tire, Multi-Spoke Rim, Brake Disc, M-Caliper)
+  // 9. Four Separate Articulated Wheels
   const tireMat = new THREE.MeshStandardMaterial({ color: 0x121316, roughness: 0.82, metalness: 0.1 });
   const rimMat = new THREE.MeshStandardMaterial({ color: 0x262a30, metalness: 0.88, roughness: 0.22 });
   const rotorMat = new THREE.MeshStandardMaterial({ color: 0x777c85, metalness: 0.8, roughness: 0.35 });
@@ -483,13 +462,11 @@ export function buildProceduralBMW() {
     const steerPivot = new THREE.Group();
     steerPivot.position.set(wp.x, wp.y, wp.z);
 
-    // Non-rotating brake caliper attached to steering knuckle
     const caliperGeo = new THREE.BoxGeometry(0.08, 0.18, 0.12);
     const caliper = new THREE.Mesh(caliperGeo, caliperMat);
     caliper.position.set(wp.side * 0.05, 0.06, -0.14);
     steerPivot.add(caliper);
 
-    // Rotating wheel assembly
     const spinGroup = new THREE.Group();
     const tireGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.28, 24);
     tireGeo.rotateZ(Math.PI / 2);
@@ -508,7 +485,6 @@ export function buildProceduralBMW() {
     const rotor = new THREE.Mesh(rotorGeo, rotorMat);
     spinGroup.add(rotor);
 
-    // 10-Spoke Twin-Star Alloy Rim
     for (let i = 0; i < 5; i++) {
       const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.56, 0.035), rimMat);
       spoke.position.x = wp.side * 0.115;
