@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#080a0f" />
+  <meta name="theme-color" content="#060911" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>BMW PROJECT: ULTIMATE REALISTIC DRIVE</title>
@@ -25,7 +25,7 @@
         <polygon points="42,50 49,49 45,43" fill="#e41e26" />
       </svg>
       <h2>ROTATE YOUR PHONE TO LANDSCAPE</h2>
-      <p>Ultimate Realistic Drive is engineered for widescreen landscape cockpit and chase driving. Rotate your device horizontally to resume.</p>
+      <p>BMW PROJECT: Ultimate Realistic Drive is designed for landscape widescreen driving. Rotate your phone horizontally to play.</p>
       <button id="btn-dismiss-portrait" class="hud-pill-btn">CONTINUE ANYWAY</button>
     </div>
   </div>
@@ -34,8 +34,8 @@
   <div id="webgl-error" class="hidden">
     <div class="error-card">
       <h2>WebGL 2 Graphics Notice</h2>
-      <p id="webgl-error-msg">Your device or browser does not support WebGL 2 or temporarily lost the graphics context.</p>
-      <button id="btn-reload-webgl" class="chip-btn active" style="margin-top: 14px;">Reload Simulator</button>
+      <p id="webgl-error-msg">Your device or browser does not support WebGL 2 or lost the graphics context.</p>
+      <button id="btn-reload-webgl" class="aaa-btn-primary" style="margin-top: 14px;">RELOAD SIMULATOR</button>
     </div>
   </div>
 
@@ -47,7 +47,7 @@
         <span class="stripe-violet"></span>
         <span class="stripe-red"></span>
       </div>
-      <h1>ULTIMATE REALISTIC DRIVE</h1>
+      <h1>BMW <span>PROJECT</span></h1>
       <p id="loading-status">Initializing WebGL 2 Pipeline &amp; PBR Shaders...</p>
       <div class="progress-bar"><div id="progress-fill"></div></div>
     </div>
@@ -62,224 +62,701 @@
     <button id="btn-skip-intro" class="hud-pill-btn">SKIP INTRO</button>
   </div>
 
-  <!-- Main Menu / Pause Overlay -->
-  <div id="main-menu" class="overlay-menu">
-    <div class="menu-header">
-      <div class="brand-badge">
-        <div class="m-stripes-sm">
+  <!-- ====================================================================
+       SCREEN 1: AAA MAIN MENU (Matches 01_main_menu.png)
+       ==================================================================== -->
+  <div id="main-menu" class="aaa-screen main-menu-screen">
+    <div class="main-menu-top-left">
+      <div class="hero-brand-title">
+        <span class="hero-bmw">BMW</span> <span class="hero-project">PROJECT</span>
+      </div>
+      <div class="hero-subtitle-row">
+        <div class="m-stripes-hero">
           <span class="stripe-blue"></span>
           <span class="stripe-violet"></span>
           <span class="stripe-red"></span>
         </div>
-        <span>M PERFORMANCE DIVISION // SIMULATOR</span>
+        <span class="hero-subtitle-text">ULTIMATE REALISTIC DRIVE</span>
+        <span class="hero-accent-lines"></span>
       </div>
-      <div id="menu-env-summary">GOLDEN HOUR | CLEAR | HIGH PRESET</div>
+      <div id="menu-env-summary" class="hero-env-pill">GOLDEN HOUR | CLEAR | HIGH PRESET</div>
     </div>
 
-    <div class="menu-body">
-      <nav class="menu-nav">
-        <button id="btn-start-drive" class="menu-btn primary">START DRIVING</button>
-        <button id="btn-continue-drive" class="menu-btn hidden">CONTINUE DRIVING</button>
-        <button data-panel="panel-showcase" class="menu-btn tab-btn active">VEHICLE SHOWCASE</button>
-        <button data-panel="panel-world" class="menu-btn tab-btn">WORLD &amp; WEATHER</button>
-        <button data-panel="panel-graphics" class="menu-btn tab-btn">GRAPHICS &amp; CONTROLS</button>
-        <button data-panel="panel-audio" class="menu-btn tab-btn">AUDIO &amp; EXHAUST</button>
+    <div class="main-menu-top-right">
+      <div class="menu-fps-pill" id="menu-fps-badge">FPS: 60</div>
+      <div class="menu-version-row">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <path d="M3 18h18v2H3v-2zm0-3l3-8 6 4 6-4 3 8H3z" fill="#ffcc29" />
+        </svg>
+        <span>v2.0</span>
+      </div>
+    </div>
+
+    <!-- Right-side vertical AAA action stack -->
+    <nav class="main-menu-nav" aria-label="Main Menu">
+      <button id="btn-start-drive" class="aaa-menu-card primary">
+        <span class="card-icon-box">
+          <svg viewBox="0 0 24 24" width="24" height="24"><polygon points="7,5 19,12 7,19" fill="currentColor"/></svg>
+        </span>
+        <span class="card-label" id="lbl-play-btn">PLAY</span>
+      </button>
+
+      <button id="btn-continue-drive" class="aaa-menu-card hidden">
+        <span class="card-icon-box">
+          <svg viewBox="0 0 24 24" width="22" height="22"><polygon points="7,5 19,12 7,19" fill="currentColor"/></svg>
+        </span>
+        <span class="card-label">RESUME DRIVE</span>
+      </button>
+
+      <button id="btn-open-garage" class="aaa-menu-card">
+        <span class="card-icon-box">
+          <svg viewBox="0 0 24 24" width="22" height="22">
+            <path d="M5 11l1.5-4.5h11L19 11m-1.5 5a1.5 1.5 0 0 1-1.5-1.5 1.5 1.5 0 0 1 1.5-1.5 1.5 1.5 0 0 1 1.5 1.5 1.5 1.5 0 0 1-1.5 1.5m-11 0A1.5 1.5 0 0 1 5 14.5 1.5 1.5 0 0 1 6.5 13 1.5 1.5 0 0 1 8 14.5 1.5 1.5 0 0 1 6.5 16M18.92 6c-.2-.58-.76-1-1.42-1h-11c-.66 0-1.22.42-1.42 1L3 12v8a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-8l-2.08-6z" fill="currentColor"/>
+          </svg>
+        </span>
+        <span class="card-label">GARAGE</span>
+      </button>
+
+      <button id="btn-open-settings" class="aaa-menu-card">
+        <span class="card-icon-box">
+          <svg viewBox="0 0 24 24" width="22" height="22">
+            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z" fill="currentColor"/>
+          </svg>
+        </span>
+        <span class="card-label">SETTINGS</span>
+      </button>
+
+      <button id="btn-open-controls" class="aaa-menu-card">
+        <span class="card-icon-box">
+          <svg viewBox="0 0 24 24" width="22" height="22">
+            <path d="M17.5 7H6.5C4 7 2 9 2 11.5v3.25C2 16.55 3.45 18 5.25 18c.9 0 1.72-.37 2.31-.96L9.5 15h5l1.94 2.04c.59.59 1.41.96 2.31.96 1.8 0 3.25-1.45 3.25-3.25V11.5C22 9 20 7 17.5 7zM8 13H6v2H5v-2H3v-1h2v-2h1v2h2v1zm8.5 1a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm2-2a1 1 0 1 1 0-2 1 1 0 0 1 0 2z" fill="currentColor"/>
+          </svg>
+        </span>
+        <span class="card-label">CONTROLS</span>
+      </button>
+
+      <button id="btn-open-sound" class="aaa-menu-card">
+        <span class="card-icon-box">
+          <svg viewBox="0 0 24 24" width="22" height="22">
+            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" fill="currentColor"/>
+          </svg>
+        </span>
+        <span class="card-label">SOUND</span>
+      </button>
+    </nav>
+
+    <!-- Bottom-left tagline ribbon -->
+    <div class="main-menu-bottom-left">
+      <div class="m-stripes-ribbon">
+        <span class="stripe-blue"></span>
+        <span class="stripe-violet"></span>
+        <span class="stripe-red"></span>
+      </div>
+      <span class="tagline-text">DRIVE &bull; EXPLORE &bull; ENJOY</span>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       SCREEN 2: GARAGE & VEHICLE CUSTOMIZATION (Matches 03_garage.png)
+       ==================================================================== -->
+  <div id="garage-screen" class="aaa-screen garage-screen hidden">
+    <header class="subscreen-header">
+      <div class="subscreen-title-group">
+        <button id="btn-garage-home" class="header-icon-btn" title="Return to Menu" aria-label="Return to Menu">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/></svg>
+        </button>
+        <span class="header-slash"></span>
+        <h2>GARAGE</h2>
+        <span class="vehicle-subtitle" id="garage-car-title">BMW M4 COMPETITION COUPE</span>
+      </div>
+
+      <div class="garage-currency-pill">
+        <span class="coin-badge">M</span>
+        <strong id="garage-credits">125,000</strong>
+        <span class="plus-badge">RWD</span>
+      </div>
+    </header>
+
+    <!-- Left Vertical Paint Swatch Dock -->
+    <aside class="garage-swatch-dock" id="paint-select" aria-label="Vehicle Paint Selection">
+      <button class="garage-swatch-btn active" data-paint="#0a2b6e" data-paint-name="Tanzanite Blue II" style="--swatch:#0a3b96;" title="Tanzanite Blue"></button>
+      <button class="garage-swatch-btn" data-paint="#b8141c" data-paint-name="Toronto Red Metallic" style="--swatch:#d11922;" title="Toronto Red"></button>
+      <button class="garage-swatch-btn" data-paint="#e2e6eb" data-paint-name="Alpine White" style="--swatch:#e8ecf0;" title="Alpine White"></button>
+      <button class="garage-swatch-btn" data-paint="#08090c" data-paint-name="Sapphire Black" style="--swatch:#12151c;" title="Sapphire Black"></button>
+      <button class="garage-swatch-btn" data-paint="#e5a914" data-paint-name="Sao Paulo Yellow" style="--swatch:#f5b918;" title="Sao Paulo Yellow"></button>
+      <button class="garage-swatch-btn" data-paint="#7b1fa2" data-paint-name="Twilight Purple" style="--swatch:#9c27b0;" title="Twilight Purple"></button>
+      <button class="garage-swatch-btn" data-paint="#125432" data-paint-name="Isle of Man Green" style="--swatch:#186b40;" title="Isle of Man Green"></button>
+    </aside>
+
+    <!-- Center Showroom Hint & Paint Label -->
+    <div class="garage-center-footer">
+      <div class="paint-selected-badge" id="garage-paint-label">PAINT: TANZANITE BLUE II</div>
+      <div class="garage-glb-bar">
+        <input type="text" id="input-glb-url" placeholder="Optional custom GLB URL or assets/vehicles/bmw_m4.glb" />
+        <button id="btn-load-glb" class="chip-btn">Load GLB</button>
+      </div>
+      <small id="glb-status-msg" class="status-subtext">Drag horizontally on the car to orbit showroom camera.</small>
+    </div>
+
+    <!-- Right Vehicle Performance Telemetry Bars -->
+    <aside class="garage-stats-panel">
+      <div class="stat-item">
+        <div class="stat-label-row"><span>SPEED</span><strong id="stat-speed-val">300 KM/H</strong></div>
+        <div class="stat-bar-track"><div class="stat-bar-fill" id="stat-bar-speed" style="width: 88%;"></div></div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label-row"><span>ACCELERATION</span><strong id="stat-accel-val">3.5s 0-100</strong></div>
+        <div class="stat-bar-track"><div class="stat-bar-fill" id="stat-bar-accel" style="width: 86%;"></div></div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label-row"><span>HANDLING</span><strong id="stat-handling-val">M-DYNAMIC</strong></div>
+        <div class="stat-bar-track"><div class="stat-bar-fill" id="stat-bar-handling" style="width: 84%;"></div></div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label-row"><span>BRAKING</span><strong id="stat-brake-val">6-PISTON M</strong></div>
+        <div class="stat-bar-track"><div class="stat-bar-fill" id="stat-bar-braking" style="width: 82%;"></div></div>
+      </div>
+    </aside>
+
+    <!-- Bottom Navigation Actions -->
+    <footer class="subscreen-footer">
+      <button id="btn-garage-back" class="aaa-btn-secondary">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/></svg>
+        <span>BACK</span>
+      </button>
+      <button id="btn-garage-select" class="aaa-btn-primary">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg>
+        <span>SELECT</span>
+      </button>
+    </footer>
+  </div>
+
+  <!-- ====================================================================
+       SCREEN 3: SETTINGS MENU (Matches 04_settings.png)
+       ==================================================================== -->
+  <div id="settings-screen" class="aaa-screen settings-screen hidden">
+    <header class="subscreen-header">
+      <div class="subscreen-title-group">
+        <span class="header-icon-static">
+          <svg viewBox="0 0 24 24" width="22" height="22">
+            <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z" fill="currentColor"/>
+          </svg>
+        </span>
+        <span class="header-slash"></span>
+        <h2>SETTINGS</h2>
+      </div>
+    </header>
+
+    <div class="settings-frame">
+      <!-- Top Horizontal Category Tabs -->
+      <nav class="settings-tabs" aria-label="Settings Categories">
+        <button class="settings-tab-btn tab-btn active" data-panel="panel-graphics">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z" fill="currentColor"/></svg>
+          <span>GRAPHICS</span>
+        </button>
+        <button class="settings-tab-btn tab-btn" data-panel="panel-audio">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02z" fill="currentColor"/></svg>
+          <span>AUDIO</span>
+        </button>
+        <button class="settings-tab-btn tab-btn" data-panel="panel-controls">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M17.5 7H6.5C4 7 2 9 2 11.5v3.25C2 16.55 3.45 18 5.25 18c.9 0 1.72-.37 2.31-.96L9.5 15h5l1.94 2.04c.59.59 1.41.96 2.31.96 1.8 0 3.25-1.45 3.25-3.25V11.5C22 9 20 7 17.5 7z" fill="currentColor"/></svg>
+          <span>CONTROLS</span>
+        </button>
+        <button class="settings-tab-btn tab-btn" data-panel="panel-gameplay">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" fill="currentColor"/></svg>
+          <span>GAMEPLAY</span>
+        </button>
       </nav>
 
-      <div class="menu-panels">
-        <!-- Showcase Panel -->
-        <div id="panel-showcase" class="menu-panel">
-          <h3>M4 COMPETITION INSPIRED COUPE</h3>
-          <p class="panel-desc">Sculpted fastback performance coupe with clearcoat metallic paint, twin-kidney grille, articulated brake caliper assemblies, full cockpit interior, and optional external GLB vehicle support.</p>
-          <div class="spec-grid">
-            <div><span>POWER</span><strong>375 kW (510 HP)</strong></div>
-            <div><span>TORQUE</span><strong>650 Nm</strong></div>
-            <div><span>DRIVETRAIN</span><strong>RWD / M-Diff</strong></div>
-            <div><span>WEIGHT</span><strong>1,725 kg</strong></div>
-          </div>
-          <div class="control-row">
-            <label>Paint Finish</label>
-            <div class="btn-group" id="paint-select">
-              <button class="chip-btn active" data-paint="#08090c">Sapphire Black</button>
-              <button class="chip-btn" data-paint="#2a2e35">Brooklyn Grey</button>
-              <button class="chip-btn" data-paint="#0a1f44">Tanzanite Blue</button>
-              <button class="chip-btn" data-paint="#124b2e">Isle of Man Green</button>
-              <button class="chip-btn" data-paint="#9e141c">Toronto Red</button>
-              <button class="chip-btn" data-paint="#d8dce0">Alpine White</button>
-              <button class="chip-btn" data-paint="#d49b16">Sao Paulo Yellow</button>
+      <div class="settings-content-grid">
+        <div class="settings-panels-col">
+          <!-- TAB 1: GRAPHICS -->
+          <div id="panel-graphics" class="menu-panel">
+            <div class="setting-line">
+              <label>Graphics Quality</label>
+              <div class="btn-group segmented-group" id="preset-select">
+                <button class="chip-btn" data-preset="low">Low</button>
+                <button class="chip-btn" data-preset="medium">Medium</button>
+                <button class="chip-btn active" data-preset="high">High</button>
+                <button class="chip-btn" data-preset="ultra">Ultra</button>
+              </div>
+            </div>
+
+            <div class="setting-line">
+              <label>Resolution Scale</label>
+              <div class="slider-control">
+                <input type="range" id="slider-res" min="0.5" max="1.25" step="0.05" value="1.0" />
+                <span class="slider-val" id="lbl-res-scale">100%</span>
+              </div>
+            </div>
+
+            <div class="setting-line">
+              <label>Real-Time Shadows</label>
+              <label class="ios-switch">
+                <input type="checkbox" id="toggle-shadows" checked />
+                <span class="switch-track"></span>
+              </label>
+            </div>
+
+            <div class="setting-line">
+              <label>High-DPI Anti-Aliasing</label>
+              <label class="ios-switch">
+                <input type="checkbox" id="toggle-aa" checked />
+                <span class="switch-track"></span>
+              </label>
+            </div>
+
+            <div class="setting-line">
+              <label>ACES Filmic Post-Processing</label>
+              <label class="ios-switch">
+                <input type="checkbox" id="toggle-postfx" checked />
+                <span class="switch-track"></span>
+              </label>
+            </div>
+
+            <div class="setting-line">
+              <label>Fullscreen Mode</label>
+              <label class="ios-switch">
+                <input type="checkbox" id="toggle-fullscreen" />
+                <span class="switch-track"></span>
+              </label>
             </div>
           </div>
-          <div class="control-row">
-            <label>Custom GLB Model (Optional URL or Relative Path)</label>
-            <div class="input-group">
-              <input type="text" id="input-glb-url" placeholder="assets/vehicles/bmw_m4.glb (Leave blank for procedural)" />
-              <button id="btn-load-glb" class="chip-btn">Load GLB</button>
+
+          <!-- TAB 2: AUDIO -->
+          <div id="panel-audio" class="menu-panel hidden">
+            <div class="setting-line">
+              <label>Master Audio</label>
+              <div class="btn-group segmented-group" id="audio-toggle-group">
+                <button class="chip-btn active" data-audio="on">Enabled</button>
+                <button class="chip-btn" data-audio="off">Muted</button>
+              </div>
             </div>
-            <small id="glb-status-msg" class="status-subtext">Built-in procedural M-Coupe active (automatic fallback enabled).</small>
+
+            <div class="setting-line">
+              <label>Master Volume</label>
+              <div class="slider-control">
+                <input type="range" id="slider-vol" min="0" max="100" step="5" value="80" />
+                <span class="slider-val" id="lbl-vol">80%</span>
+              </div>
+            </div>
+
+            <div class="setting-line">
+              <label>Engine &amp; Exhaust Volume</label>
+              <div class="slider-control">
+                <input type="range" id="slider-engine-vol" min="0" max="100" step="5" value="90" />
+                <span class="slider-val" id="lbl-engine-vol">90%</span>
+              </div>
+            </div>
+
+            <div class="setting-line">
+              <label>Ambient Music Synth</label>
+              <div class="slider-control">
+                <input type="range" id="slider-music-vol" min="0" max="100" step="5" value="40" />
+                <span class="slider-val" id="lbl-music-vol">40%</span>
+              </div>
+            </div>
+
+            <div class="setting-line">
+              <label>Tire &amp; Wind Effects Volume</label>
+              <div class="slider-control">
+                <input type="range" id="slider-fx-vol" min="0" max="100" step="5" value="85" />
+                <span class="slider-val" id="lbl-fx-vol">85%</span>
+              </div>
+            </div>
+
+            <div class="setting-line">
+              <label>Exhaust Valve Mode</label>
+              <div class="btn-group segmented-group" id="exhaust-select">
+                <button class="chip-btn" data-exhaust="comfort">Comfort</button>
+                <button class="chip-btn active" data-exhaust="sport">M Sport+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 3: CONTROLS -->
+          <div id="panel-controls" class="menu-panel hidden">
+            <div class="setting-line">
+              <label>Steering Sensitivity</label>
+              <div class="slider-control">
+                <input type="range" id="slider-sens" min="0.5" max="1.8" step="0.05" value="1.0" />
+                <span class="slider-val" id="lbl-sens">1.0x</span>
+              </div>
+            </div>
+
+            <div class="setting-line">
+              <label>Touch Button Scale</label>
+              <div class="slider-control">
+                <input type="range" id="slider-touch-scale" min="85" max="125" step="5" value="100" />
+                <span class="slider-val" id="lbl-touch-scale">100%</span>
+              </div>
+            </div>
+
+            <div class="setting-line">
+              <label>Touch Control Layout</label>
+              <div class="btn-group segmented-group" id="layout-select">
+                <button class="chip-btn active" data-layout="standard">Standard (L-Steer)</button>
+                <button class="chip-btn" data-layout="flipped">Flipped (R-Steer)</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 4: GAMEPLAY & WORLD -->
+          <div id="panel-gameplay" class="menu-panel hidden">
+            <div class="setting-line">
+              <label>Camera FOV</label>
+              <div class="slider-control">
+                <input type="range" id="slider-fov" min="50" max="85" step="1" value="62" />
+                <span class="slider-val" id="lbl-fov">62&deg;</span>
+              </div>
+            </div>
+
+            <div class="setting-line">
+              <label>Camera Follow Stiffness</label>
+              <div class="slider-control">
+                <input type="range" id="slider-cam-sens" min="50" max="150" step="5" value="100" />
+                <span class="slider-val" id="lbl-cam-sens">100%</span>
+              </div>
+            </div>
+
+            <div class="setting-line">
+              <label>Speedometer Units</label>
+              <div class="btn-group segmented-group" id="units-select">
+                <button class="chip-btn active" data-units="kmh">KM/H</button>
+                <button class="chip-btn" data-units="mph">MPH</button>
+              </div>
+            </div>
+
+            <div class="setting-line">
+              <label>Driving Physics Mode</label>
+              <div class="btn-group segmented-group" id="assist-select">
+                <button class="chip-btn active" data-assist="sim">M-Dynamic Sim</button>
+                <button class="chip-btn" data-assist="arcade">Assisted Stable</button>
+              </div>
+            </div>
+
+            <div class="setting-line">
+              <label>Time of Day</label>
+              <div class="btn-group segmented-group" id="time-select">
+                <button class="chip-btn" data-time="morning">Morning</button>
+                <button class="chip-btn active" data-time="sunset">Golden Hour</button>
+                <button class="chip-btn" data-time="night">Night</button>
+              </div>
+            </div>
+
+            <div class="setting-line">
+              <label>Dynamic Weather</label>
+              <div class="btn-group segmented-group" id="weather-select">
+                <button class="chip-btn active" data-weather="clear">Clear</button>
+                <button class="chip-btn" data-weather="light_rain">Rain</button>
+                <button class="chip-btn" data-weather="heavy_rain">Storm</button>
+              </div>
+            </div>
+
+            <div class="setting-line">
+              <label>Spawn Zone</label>
+              <div class="btn-group segmented-group" id="spawn-select">
+                <button class="chip-btn active" data-spawn="city">City</button>
+                <button class="chip-btn" data-spawn="highway">Mountain</button>
+                <button class="chip-btn" data-spawn="coast">Coast</button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- World & Weather Panel -->
-        <div id="panel-world" class="menu-panel hidden">
-          <h3>ENVIRONMENT &amp; TELEPORT</h3>
-          <div class="control-row">
-            <label>Time of Day</label>
-            <div class="btn-group" id="time-select">
-              <button class="chip-btn" data-time="morning">Morning</button>
-              <button class="chip-btn active" data-time="sunset">Golden Hour</button>
-              <button class="chip-btn" data-time="night">Night City</button>
+        <!-- Right Visual Preview Card (Matches 04_settings.png) -->
+        <aside class="settings-preview-col">
+          <div class="preview-card-frame">
+            <img id="settings-preview-img" src="./assets/ui/settings_preview_card.png" alt="Environment Preview" />
+            <div class="preview-card-caption">
+              <strong id="preview-preset-title">HIGH PRESET</strong>
+              <span id="preview-env-sub">PBR Clearcoat + Dynamic Shadows</span>
             </div>
           </div>
-          <div class="control-row">
-            <label>Dynamic Weather</label>
-            <div class="btn-group" id="weather-select">
-              <button class="chip-btn active" data-weather="clear">Clear Dry</button>
-              <button class="chip-btn" data-weather="light_rain">Light Rain</button>
-              <button class="chip-btn" data-weather="heavy_rain">Heavy Storm</button>
-            </div>
-          </div>
-          <div class="control-row">
-            <label>Spawn Location</label>
-            <div class="btn-group" id="spawn-select">
-              <button class="chip-btn active" data-spawn="city">Modern City</button>
-              <button class="chip-btn" data-spawn="highway">Mountain Highway</button>
-              <button class="chip-btn" data-spawn="coast">Coastal Route</button>
-            </div>
-          </div>
-        </div>
+        </aside>
+      </div>
+    </div>
 
-        <!-- Graphics & Controls Panel -->
-        <div id="panel-graphics" class="menu-panel hidden">
-          <h3>ANDROID PERFORMANCE &amp; HANDLING</h3>
-          <div class="control-row">
-            <label>Graphics Preset</label>
-            <div class="btn-group" id="preset-select">
-              <button class="chip-btn" data-preset="low">LOW (30+ FPS)</button>
-              <button class="chip-btn" data-preset="medium">MEDIUM</button>
-              <button class="chip-btn active" data-preset="high">HIGH (PBR+Shadows)</button>
-              <button class="chip-btn" data-preset="ultra">ULTRA (Max)</button>
-            </div>
-          </div>
-          <div class="control-row">
-            <label>Render Resolution Scale: <span id="lbl-res-scale">100%</span></label>
-            <input type="range" id="slider-res" min="0.5" max="1.25" step="0.05" value="1.0" />
-          </div>
-          <div class="control-row">
-            <label>Camera FOV: <span id="lbl-fov">62°</span></label>
-            <input type="range" id="slider-fov" min="50" max="85" step="1" value="62" />
-          </div>
-          <div class="control-row">
-            <label>Steering Sensitivity: <span id="lbl-sens">1.0x</span></label>
-            <input type="range" id="slider-sens" min="0.5" max="1.8" step="0.1" value="1.0" />
-          </div>
-          <div class="control-row">
-            <label>Driving Physics Mode</label>
-            <div class="btn-group" id="assist-select">
-              <button class="chip-btn active" data-assist="sim">M-Dynamic Sim</button>
-              <button class="chip-btn" data-assist="arcade">Assisted Stable</button>
-            </div>
-          </div>
-        </div>
+    <footer class="subscreen-footer">
+      <button id="btn-settings-back" class="aaa-btn-secondary">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/></svg>
+        <span>BACK</span>
+      </button>
+      <button id="btn-settings-apply" class="aaa-btn-primary">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg>
+        <span>APPLY</span>
+      </button>
+    </footer>
+  </div>
 
-        <!-- Audio Panel -->
-        <div id="panel-audio" class="menu-panel hidden">
-          <h3>ACOUSTIC SYNTHESIS</h3>
-          <div class="control-row">
-            <label>Master Audio</label>
-            <div class="btn-group" id="audio-toggle-group">
-              <button class="chip-btn active" data-audio="on">ENABLED</button>
-              <button class="chip-btn" data-audio="off">MUTED</button>
-            </div>
-          </div>
-          <div class="control-row">
-            <label>Exhaust Valve Mode</label>
-            <div class="btn-group" id="exhaust-select">
-              <button class="chip-btn" data-exhaust="comfort">Efficient (Quiet)</button>
-              <button class="chip-btn active" data-exhaust="sport">M Sport+ (Aggressive)</button>
-            </div>
-          </div>
-          <div class="control-row">
-            <label>Engine Volume: <span id="lbl-vol">80%</span></label>
-            <input type="range" id="slider-vol" min="0" max="100" step="5" value="80" />
-          </div>
+  <!-- ====================================================================
+       SCREEN 4: PAUSE MENU OVERLAY (Matches 05_pause_menu.png)
+       ==================================================================== -->
+  <div id="pause-menu" class="aaa-screen pause-screen hidden">
+    <div class="pause-left-column">
+      <div class="pause-header">
+        <div class="m-stripes-hero">
+          <span class="stripe-blue"></span>
+          <span class="stripe-violet"></span>
+          <span class="stripe-red"></span>
         </div>
+        <h2>PAUSED</h2>
+      </div>
+
+      <nav class="pause-nav" aria-label="Pause Menu">
+        <button id="btn-pause-resume" class="aaa-menu-card primary">
+          <span class="card-icon-box">
+            <svg viewBox="0 0 24 24" width="22" height="22"><polygon points="7,5 19,12 7,19" fill="currentColor"/></svg>
+          </span>
+          <span class="card-label">RESUME</span>
+        </button>
+
+        <button id="btn-pause-restart" class="aaa-menu-card">
+          <span class="card-icon-box">
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/>
+            </svg>
+          </span>
+          <span class="card-label">RESTART</span>
+        </button>
+
+        <button id="btn-pause-garage" class="aaa-menu-card">
+          <span class="card-icon-box">
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <path d="M5 11l1.5-4.5h11L19 11m-1.5 5a1.5 1.5 0 0 1-1.5-1.5 1.5 1.5 0 0 1 1.5-1.5 1.5 1.5 0 0 1 1.5 1.5 1.5 1.5 0 0 1-1.5 1.5m-11 0A1.5 1.5 0 0 1 5 14.5 1.5 1.5 0 0 1 6.5 13 1.5 1.5 0 0 1 8 14.5 1.5 1.5 0 0 1 6.5 16M18.92 6c-.2-.58-.76-1-1.42-1h-11c-.66 0-1.22.42-1.42 1L3 12v8a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-8l-2.08-6z" fill="currentColor"/>
+            </svg>
+          </span>
+          <span class="card-label">GARAGE</span>
+        </button>
+
+        <button id="btn-pause-settings" class="aaa-menu-card">
+          <span class="card-icon-box">
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z" fill="currentColor"/>
+            </svg>
+          </span>
+          <span class="card-label">SETTINGS</span>
+        </button>
+
+        <button id="btn-pause-mainmenu" class="aaa-menu-card">
+          <span class="card-icon-box">
+            <svg viewBox="0 0 24 24" width="22" height="22"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/></svg>
+          </span>
+          <span class="card-label">MAIN MENU</span>
+        </button>
+      </nav>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       SCREEN 5: EXIT CONFIRMATION MODAL (Matches 06_exit_confirmation.png)
+       ==================================================================== -->
+  <div id="exit-modal" class="exit-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="exit-modal-title">
+    <div class="exit-modal-card">
+      <div class="exit-warn-icon">
+        <svg viewBox="0 0 24 24" width="46" height="46" aria-hidden="true">
+          <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" fill="#ffb800"/>
+        </svg>
+      </div>
+      <h3 id="exit-modal-title">EXIT GAME?</h3>
+      <p id="exit-modal-desc">Are you sure you want to exit to main menu?</p>
+      <div class="exit-modal-actions">
+        <button id="btn-exit-stay" class="exit-btn-stay">STAY</button>
+        <button id="btn-exit-confirm" class="exit-btn-confirm">EXIT</button>
       </div>
     </div>
   </div>
 
-  <!-- In-Game Driving HUD -->
+  <!-- ====================================================================
+       SCREEN 6: IN-GAME DRIVING HUD & DIGITAL SPEEDOMETER
+       (Matches 02_driving_speedometer_hud.png)
+       ==================================================================== -->
   <div id="driving-hud" class="hidden">
-    <!-- Top Utility Bar -->
+    <!-- Top-Left Circular Minimap with North Badge -->
     <div class="hud-top">
       <div class="minimap-wrapper">
-        <canvas id="minimap-canvas" width="136" height="136"></canvas>
+        <div class="minimap-ring">
+          <span class="minimap-north">N</span>
+          <canvas id="minimap-canvas" width="136" height="136"></canvas>
+        </div>
         <div id="zone-label">DOWNTOWN CORE</div>
       </div>
 
-      <div class="hud-top-center">
-        <span class="m-stripes-xs" aria-hidden="true">
-          <span class="stripe-blue"></span>
-          <span class="stripe-violet"></span>
-          <span class="stripe-red"></span>
-        </span>
-        <span id="hud-env-badge">SUNSET | CLEAR</span>
-        <span class="hud-sep">|</span>
-        <span id="hud-fps">60 FPS</span>
-      </div>
+      <!-- Top-Right Action Buttons & Telemetry Widget -->
+      <div class="hud-top-right-stack">
+        <div class="hud-top-right">
+          <button id="btn-hud-camera" class="hud-circle-btn" title="Switch Camera (C)" aria-label="Switch Camera">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z" fill="currentColor"/>
+            </svg>
+            <span class="cam-sub-label" id="hud-cam-label">CHASE</span>
+          </button>
 
-      <div class="hud-top-right">
-        <button id="btn-hud-camera" class="hud-icon-btn" title="Switch Camera (C)">CAM: CHASE</button>
-        <button id="btn-hud-lights" class="hud-icon-btn active" title="Toggle Headlights (L)">LIGHTS</button>
-        <button id="btn-hud-sound" class="hud-icon-btn active" title="Toggle Audio (M)">AUDIO</button>
-        <button id="btn-hud-gfx" class="hud-icon-btn" title="Cycle Graphics">GFX: HIGH</button>
-        <button id="btn-hud-reset" class="hud-icon-btn" title="Reset onto Road (R)">RESET</button>
-        <button id="btn-hud-pause" class="hud-icon-btn" title="Pause Menu (ESC)">PAUSE</button>
-      </div>
-    </div>
+          <button id="btn-hud-lights" class="hud-circle-btn active" title="Toggle Headlights (L)" aria-label="Toggle Headlights">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M12 6a6 6 0 0 1 6 6c0 2.22-1.21 4.16-3 5.2V19a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-1.8c-1.79-1.04-3-2.98-3-5.2a6 6 0 0 1 6-6zm2 15v1a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-1h4z" fill="currentColor"/>
+            </svg>
+          </button>
 
-    <!-- Center-Bottom M-Live Digital Instrument Cluster -->
-    <div class="instrument-cluster" id="hud-cluster">
-      <div class="cluster-status-row">
-        <span id="hud-mode-pill" class="cluster-pill">M-DYNAMIC</span>
-        <span id="hud-shift-pill" class="cluster-pill shift-pill">SHIFT</span>
-        <span id="hud-brake-pill" class="cluster-pill brake-pill">BRAKE</span>
-      </div>
-      <div class="rpm-bar-container">
-        <div id="rpm-bar-fill"></div>
-      </div>
-      <div class="cluster-readout">
-        <div class="gear-box" id="hud-gear">1</div>
-        <div class="speed-box">
-          <span id="hud-speed">0</span>
-          <small>KM/H</small>
+          <button id="btn-hud-sound" class="hud-circle-btn active" title="Toggle Audio (M)" aria-label="Toggle Audio">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02z" fill="currentColor"/>
+            </svg>
+          </button>
+
+          <button id="btn-hud-gfx" class="hud-circle-btn" title="Cycle Graphics" aria-label="Cycle Graphics">
+            <span id="hud-gfx-short">HIGH</span>
+          </button>
+
+          <button id="btn-hud-reset" class="hud-circle-btn" title="Reset onto Road (R)" aria-label="Reset Car">
+            <svg viewBox="0 0 24 24" width="19" height="19">
+              <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/>
+            </svg>
+          </button>
+
+          <button id="btn-hud-pause" class="hud-circle-btn pause-btn" title="Pause Menu (ESC)" aria-label="Pause Game">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" fill="currentColor"/>
+            </svg>
+          </button>
         </div>
-        <div class="rpm-text"><span id="hud-rpm">850</span> <small>RPM</small></div>
+
+        <!-- Stacked Weather / Zone / Clock Telemetry Widget -->
+        <div class="hud-telemetry-card">
+          <div class="tele-row">
+            <span class="tele-icon sun-icon" aria-hidden="true">&#9728;</span>
+            <span id="hud-weather-temp">26&deg;C</span>
+            <span class="tele-fps" id="hud-fps">60 FPS</span>
+          </div>
+          <div class="tele-row">
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z" fill="#e8eef5"/></svg>
+            <span id="hud-city-short">City</span>
+          </div>
+          <div class="tele-row">
+            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" fill="#e8eef5"/></svg>
+            <span id="hud-clock-time">17:45</span>
+          </div>
+          <span id="hud-env-badge" class="hidden">SUNSET | CLEAR</span>
+        </div>
       </div>
     </div>
 
-    <!-- Mobile Touch Controls -->
-    <div class="touch-controls-left">
+    <!-- Center-Bottom BMW M Digital Speedometer & Tachometer Cluster -->
+    <div class="instrument-cluster" id="hud-cluster">
+      <!-- Left Wing: Fuel Level & Indicators -->
+      <div class="cluster-wing wing-left">
+        <div class="wing-top-icons">
+          <span id="ind-turn-left" class="dash-ind" title="Left Signal">&#9664;</span>
+          <span id="ind-headlights" class="dash-ind active" title="Headlights">&#9728;</span>
+        </div>
+        <svg class="wing-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M19.77 7.23l.01-.01-3.72-3.72L15 4.56l2.11 2.11c-.94.36-1.61 1.26-1.61 2.33a2.5 2.5 0 0 0 2.5 2.5c.36 0 .69-.08 1-.21v7.21c0 .55-.45 1-1 1s-1-.45-1-1V14c0-1.1-.9-2-2-2h-1V5c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v16h10v-7.5h1.5v5a2.5 2.5 0 0 0 5 0V9c0-.69-.28-1.32-.73-1.77zM12 10H6V5h6v5z" fill="currentColor"/>
+        </svg>
+        <strong id="hud-fuel">98%</strong>
+      </div>
+
+      <!-- Central Arch Gauge -->
+      <div class="cluster-center-arch">
+        <svg class="tach-svg" viewBox="0 0 280 145" aria-hidden="true">
+          <defs>
+            <linearGradient id="tachGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#00a8ff" />
+              <stop offset="68%" stop-color="#00d2ff" />
+              <stop offset="82%" stop-color="#ff9f1a" />
+              <stop offset="100%" stop-color="#e41e26" />
+            </linearGradient>
+            <filter id="tachGlow" x="-15%" y="-15%" width="130%" height="130%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          <!-- Outer metallic bezel & background track -->
+          <path d="M 26 130 A 116 116 0 0 1 254 130" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="14" stroke-linecap="butt" />
+          <!-- Redline warning zone backing (6.5k - 8k) -->
+          <path d="M 222 48 A 116 116 0 0 1 254 130" fill="none" stroke="rgba(228,30,38,0.32)" stroke-width="14" />
+          <!-- Dynamic RPM active arc (stroke-dasharray=364.4) -->
+          <path id="tach-active-arc" d="M 26 130 A 116 116 0 0 1 254 130" fill="none" stroke="url(#tachGrad)" stroke-width="12" stroke-dasharray="364.4" stroke-dashoffset="320" filter="url(#tachGlow)" />
+          <!-- Tick marks overlay -->
+          <path d="M 26 130 A 116 116 0 0 1 254 130" fill="none" stroke="rgba(8,11,18,0.75)" stroke-width="14" stroke-dasharray="3 9.1" />
+
+          <!-- Scale labels 0..8 -->
+          <g class="tach-nums" fill="#c8d6e8" font-size="11" font-weight="800" text-anchor="middle">
+            <text x="43" y="126">0</text>
+            <text x="48" y="92">1</text>
+            <text x="69" y="62">2</text>
+            <text x="102" y="42">3</text>
+            <text x="140" y="36">4</text>
+            <text x="178" y="42">5</text>
+            <text x="211" y="62">6</text>
+            <text x="230" y="92" fill="#ff6b6b">7</text>
+            <text x="236" y="126" fill="#e41e26">8</text>
+          </g>
+        </svg>
+
+        <!-- Central Digital Readout -->
+        <div class="cluster-readout">
+          <div class="speed-box">
+            <span id="hud-speed">0</span>
+            <small id="hud-speed-unit">KM/H</small>
+          </div>
+          <div class="gear-display-group">
+            <span class="drive-mode-char" id="hud-drive-char">D</span>
+            <span class="gear-box" id="hud-gear">1</span>
+          </div>
+        </div>
+
+        <!-- Bottom RPM Bar & Label -->
+        <div class="rpm-bar-container">
+          <div id="rpm-bar-fill"></div>
+        </div>
+        <div class="cluster-bottom-meta">
+          <span id="hud-mode-pill" class="meta-pill">M-DYNAMIC</span>
+          <span class="rpm-caption">RPM x1000 (<b id="hud-rpm">850</b>)</span>
+          <span id="hud-shift-pill" class="meta-pill shift-pill">SHIFT</span>
+        </div>
+      </div>
+
+      <!-- Right Wing: Engine Temp & Handbrake Status -->
+      <div class="cluster-wing wing-right">
+        <div class="wing-top-icons">
+          <span id="ind-handbrake" class="dash-ind brake-ind" title="Parking Brake">(!)</span>
+          <span id="ind-turn-right" class="dash-ind" title="Right Signal">&#9654;</span>
+        </div>
+        <svg class="wing-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M15 13V5c0-1.66-1.34-3-3-3S9 3.34 9 5v8c-1.21.91-2 2.37-2 4 0 2.76 2.24 5 5 5s5-2.24 5-5c0-1.63-.79-3.09-2-4zm-4-8c0-.55.45-1 1-1s1 .45 1 1h-1v1h1v2h-1v1h1v2h-2V5z" fill="currentColor"/>
+        </svg>
+        <strong id="hud-temp">90&deg;C</strong>
+      </div>
+    </div>
+
+    <!-- Mobile Touch Controls (Matches 02_driving_speedometer_hud.png) -->
+    <div class="touch-controls-left" id="touch-left-group">
       <button id="touch-left" class="touch-btn steer-btn" aria-label="Steer Left">
-        <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path d="M15 5l-8 7 8 7V5z" fill="currentColor"/></svg>
+        <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z" fill="currentColor"/></svg>
       </button>
       <button id="touch-right" class="touch-btn steer-btn" aria-label="Steer Right">
-        <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><path d="M9 5l8 7-8 7V5z" fill="currentColor"/></svg>
+        <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" fill="currentColor"/></svg>
       </button>
     </div>
 
-    <div class="touch-controls-right">
-      <button id="touch-handbrake" class="touch-btn ebrake-btn">
-        <span class="btn-sub">DRIFT</span>
-        <strong>P-BRAKE</strong>
+    <div class="touch-controls-right" id="touch-right-group">
+      <button id="touch-handbrake" class="touch-btn ebrake-btn" aria-label="Handbrake">
+        <span class="ebrake-ring">(!)</span>
       </button>
-      <button id="touch-brake" class="touch-btn pedal-brake">
-        <span class="btn-sub">REV</span>
-        <strong>BRAKE</strong>
-      </button>
-      <button id="touch-throttle" class="touch-btn pedal-gas">
-        <span class="btn-sub">POWER</span>
-        <strong>THROTTLE</strong>
-      </button>
+      <div class="pedals-row">
+        <button id="touch-brake" class="touch-btn pedal-brake" aria-label="Brake and Reverse">
+          <span class="pedal-grooves"></span>
+          <small>BRAKE</small>
+        </button>
+        <button id="touch-throttle" class="touch-btn pedal-gas" aria-label="Throttle">
+          <span class="pedal-grooves"></span>
+          <small>GAS</small>
+        </button>
+      </div>
     </div>
   </div>
 
