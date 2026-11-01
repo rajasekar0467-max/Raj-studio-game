@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import './hud-upgrade.css';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { buildProceduralBMW, loadExternalGLBVehicle } from './carBuilder.js';
@@ -56,7 +55,11 @@ const UI = {
 };
 
 const STORAGE_KEY = 'bmw_ultimate_drive_settings_v2';
-const ASSET = (p) => `${import.meta.env.BASE_URL}assets/${p.replace(/^\/?assets\//, '')}`;
+const BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL)
+  ? import.meta.env.BASE_URL
+  : './';
+const ASSET = (p) => `${BASE_URL}assets/${p.replace(/^\/?assets\//, '')}`;
+const ASSET_FALLBACK = (p) => `${BASE_URL}public/assets/${p.replace(/^\/?assets\//, '')}`;
 const PHYS_STEP = 1 / 60;
 const LANE_TILE_M = 60;
 const CAMERA_NAMES = ['CHASE', 'CLOSE', 'FRONT', 'SIDE', 'COCKPIT'];
@@ -2290,15 +2293,23 @@ class UltimateDriveSimulator {
     mgr.onLoad = () => this.finishLoading();
     const loader = new THREE.TextureLoader(mgr);
     const aniso = Math.min(this.renderer.capabilities.getMaxAnisotropy(), 4);
+    const onTex = (t, apply) => {
+      t.anisotropy = aniso;
+      t.colorSpace = THREE.SRGBColorSpace;
+      try { apply(t); } catch (_) { /* keep procedural fallback */ }
+    };
     const load = (file, apply) => loader.load(
       ASSET(file),
-      (t) => {
-        t.anisotropy = aniso;
-        t.colorSpace = THREE.SRGBColorSpace;
-        try { apply(t); } catch (_) { /* keep procedural fallback */ }
-      },
+      (t) => onTex(t, apply),
       undefined,
-      () => { /* optional texture absent */ }
+      () => {
+        loader.load(
+          ASSET_FALLBACK(file),
+          (t2) => onTex(t2, apply),
+          undefined,
+          () => { /* optional texture absent; procedural texture stays */ }
+        );
+      }
     );
     const tile = (t, rx, ry) => { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); return t; };
     const setMap = (mat, tex, tint) => {
