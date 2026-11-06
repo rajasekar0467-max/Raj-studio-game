@@ -229,10 +229,15 @@
         <span class="vehicle-subtitle" id="garage-car-title">BMW M4 COMPETITION COUPE</span>
       </div>
 
+      <div class="garage-mode-tabs">
+        <button id="garage-tab-style" class="garage-tab-btn active" type="button">STYLE &amp; PAINT</button>
+        <button id="garage-tab-perf" class="garage-tab-btn" type="button">PERFORMANCE TUNING</button>
+      </div>
+
       <div class="garage-currency-pill">
-        <span class="coin-badge">RR</span>
-        <strong id="garage-credits">REALISTIC PBR</strong>
-        <span class="plus-badge">510 HP</span>
+        <span class="coin-badge">CR</span>
+        <strong id="garage-credits">125,000 CR</strong>
+        <span class="plus-badge" id="garage-hp-badge">510 HP</span>
       </div>
     </header>
 
@@ -247,9 +252,68 @@
       <button class="garage-swatch-btn" data-paint="#125432" data-paint-name="Isle of Man Green" style="--swatch:#186b40;" title="Isle of Man Green"></button>
     </aside>
 
-    <!-- Center Showroom Hint & Paint Label -->
-    <div class="garage-center-footer">
+    <!-- Performance Tuning Overlay Drawer (Shown when PERFORMANCE TUNING tab is active) -->
+    <section id="garage-panel-perf" class="garage-perf-drawer hidden" aria-label="Performance Upgrades">
+      <div class="perf-upgrade-card">
+        <div class="perf-upg-head">
+          <strong>S58 TWIN-TURBO ECU</strong>
+          <span class="perf-stage-pill" id="lbl-upg-engine">STAGE 0/3</span>
+        </div>
+        <p>Increases twin-turbo boost pressure, horsepower &amp; top speed.</p>
+        <button id="btn-upg-engine" class="chip-btn active perf-buy-btn" type="button">UPGRADE • 15,000 CR</button>
+      </div>
+      <div class="perf-upgrade-card">
+        <div class="perf-upg-head">
+          <strong>M-CARBON CERAMIC BRAKES</strong>
+          <span class="perf-stage-pill" id="lbl-upg-brakes">STAGE 0/3</span>
+        </div>
+        <p>6-piston drilled carbon-ceramic rotors for shorter high-speed stopping.</p>
+        <button id="btn-upg-brakes" class="chip-btn active perf-buy-btn" type="button">UPGRADE • 12,000 CR</button>
+      </div>
+      <div class="perf-upgrade-card">
+        <div class="perf-upg-head">
+          <strong>KW V4 CLUBSPORT COILOVERS</strong>
+          <span class="perf-stage-pill" id="lbl-upg-susp">STAGE 0/3</span>
+        </div>
+        <p>Lowers center of gravity &amp; increases cornering lateral tire grip.</p>
+        <button id="btn-upg-susp" class="chip-btn active perf-buy-btn" type="button">UPGRADE • 12,000 CR</button>
+      </div>
+      <div class="perf-upgrade-card">
+        <div class="perf-upg-head">
+          <strong>M-POWER NITROUS SYSTEM</strong>
+          <span class="perf-stage-pill" id="lbl-upg-nitro">STAGE 1/3</span>
+        </div>
+        <p>Boosts M-Boost plasma thrust power &amp; automatic recharge rate.</p>
+        <button id="btn-upg-nitro" class="chip-btn active perf-buy-btn" type="button">UPGRADE • 15,000 CR</button>
+      </div>
+    </section>
+
+    <!-- Center Showroom Hint, Rim/Caliper/Underglow Customizer & Paint Label -->
+    <div class="garage-center-footer" id="garage-panel-style">
       <div class="paint-selected-badge" id="garage-paint-label">PAINT: TANZANITE BLUE II</div>
+      <div class="garage-custom-strip">
+        <div class="custom-mini-group" id="rim-select">
+          <small>RIMS</small>
+          <button class="chip-btn active" data-rim="#262a30" type="button">Gunmetal</button>
+          <button class="chip-btn" data-rim="#d8e0ea" type="button">Silver</button>
+          <button class="chip-btn" data-rim="#0d0f14" type="button">Black</button>
+          <button class="chip-btn" data-rim="#c59b48" type="button">M-Bronze</button>
+        </div>
+        <div class="custom-mini-group" id="caliper-select">
+          <small>CALIPERS</small>
+          <button class="chip-btn active" data-caliper="#0055aa" type="button">M-Blue</button>
+          <button class="chip-btn" data-caliper="#e41e26" type="button">M-Red</button>
+          <button class="chip-btn" data-caliper="#f5b918" type="button">Yellow</button>
+          <button class="chip-btn" data-caliper="#18b858" type="button">Green</button>
+        </div>
+        <div class="custom-mini-group" id="underglow-select">
+          <small>NEON</small>
+          <button class="chip-btn active" data-glow="off" type="button">Off</button>
+          <button class="chip-btn" data-glow="#00d8ff" type="button">M-Cyan</button>
+          <button class="chip-btn" data-glow="#ff1e38" type="button">M-Red</button>
+          <button class="chip-btn" data-glow="#a838ff" type="button">UV Purple</button>
+        </div>
+      </div>
       <div class="garage-glb-bar">
         <input type="text" id="input-glb-url" placeholder="Optional custom GLB URL or assets/vehicles/bmw_m4.glb" />
         <button id="btn-load-glb" class="chip-btn">Load GLB</button>
@@ -285,6 +349,97 @@
       <button id="btn-garage-select" class="aaa-btn-primary">
         <svg viewBox="0 0 24 24" width="18" height="18"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg>
         <span>SELECT</span>
+      </button>
+    </footer>
+  </div>
+
+
+  <!-- ====================================================================
+       SCREEN 2B: PHASE 2 MULTIPLAYER, AI CONVOY & EVENT HUB
+       ==================================================================== -->
+  <div id="multiplayer-screen" class="aaa-screen settings-screen hidden">
+    <header class="subscreen-header">
+      <div class="subscreen-title-group">
+        <button id="btn-mp-home" class="header-icon-btn" title="Return to Menu" aria-label="Return to Menu">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/></svg>
+        </button>
+        <span class="header-slash"></span>
+        <h2>MULTIPLAYER &amp; CONVOY HUB</h2>
+      </div>
+      <div class="garage-currency-pill">
+        <span class="coin-badge">LIVE</span>
+        <strong id="mp-status-pill">P2P ROOM + 3 AI M-RIVALS READY</strong>
+      </div>
+    </header>
+
+    <div class="settings-card-shell mp-shell">
+      <div class="settings-body-grid">
+        <div class="settings-controls-col mp-left-col">
+          <div class="setting-row">
+            <div class="setting-label-col">
+              <label for="mp-callsign-input">Driver Callsign</label>
+              <small class="setting-hint">Displayed on your 3D nametag &amp; leaderboard</small>
+            </div>
+            <div class="mp-inline-input">
+              <input type="text" id="mp-callsign-input" maxlength="16" value="RR_PILOT_01" />
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-label-col">
+              <label for="mp-room-input">Room Code (P2P / Cross-Tab Sync)</label>
+              <small class="setting-hint">Open same code in another tab/device to sync live</small>
+            </div>
+            <div class="mp-inline-input">
+              <input type="text" id="mp-room-input" maxlength="10" value="BMW-884" />
+              <button id="btn-mp-join" class="chip-btn active" type="button">SYNC ROOM</button>
+              <button id="btn-mp-host" class="chip-btn" type="button">NEW CODE</button>
+            </div>
+          </div>
+
+          <div class="setting-row mp-Mode-row">
+            <div class="setting-label-col">
+              <label>Select Driving Event Mode</label>
+              <small class="setting-hint" id="mp-mode-desc">Cruise &amp; race alongside live room peers and autonomous M-Series rivals.</small>
+            </div>
+            <div class="chip-group" id="mp-mode-select">
+              <button class="chip-btn active" data-mp-mode="convoy" type="button">Free-Roam Convoy</button>
+              <button class="chip-btn" data-mp-mode="sprint" type="button">Highway Sprint (8 CP)</button>
+              <button class="chip-btn" data-mp-mode="overtake" type="button">Overtake Challenge</button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-label-col">
+              <label>AI M-Series Rival Count</label>
+              <small class="setting-hint">Autonomous G82 M-Coupe rivals on the highway</small>
+            </div>
+            <div class="chip-group" id="mp-rivals-select">
+              <button class="chip-btn" data-rivals="0" type="button">Peers Only (0)</button>
+              <button class="chip-btn active" data-rivals="3" type="button">3 M-Rivals</button>
+              <button class="chip-btn" data-rivals="5" type="button">5 M-Rivals</button>
+            </div>
+          </div>
+        </div>
+
+        <aside class="settings-preview-col mp-roster-col">
+          <div class="mp-roster-header">
+            <strong>ACTIVE SESSION ROSTER</strong>
+            <span id="mp-peer-count">4 DRIVERS</span>
+          </div>
+          <div id="mp-roster-list" class="mp-roster-list"></div>
+        </aside>
+      </div>
+    </div>
+
+    <footer class="subscreen-footer">
+      <button id="btn-mp-back" class="aaa-btn-secondary" type="button">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/></svg>
+        <span>BACK</span>
+      </button>
+      <button id="btn-mp-launch" class="aaa-btn-primary" type="button">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+        <span>LAUNCH SESSION</span>
       </button>
     </footer>
   </div>
@@ -669,6 +824,19 @@
        SCREEN 7: IN-GAME DRIVING HUD & DIGITAL SPEEDOMETER (Part 3 & Part 5)
        ==================================================================== -->
   <div id="driving-hud" class="hidden">
+    <!-- 3D Projected Multiplayer & AI Rival Nametags Layer -->
+    <div id="mp-nametags-layer" class="mp-nametags-layer" aria-hidden="true"></div>
+
+    <!-- Top-Center Phase 2 Event & Skill Telemetry Banner -->
+    <div id="hud-event-banner" class="hud-event-banner">
+      <div class="event-main-row">
+        <span class="event-mode-tag" id="hud-event-mode">FREE-ROAM CONVOY</span>
+        <strong class="event-status-text" id="hud-event-status">CRUISE &bull; OVERTAKE &bull; M-BOOST READY</strong>
+        <span class="event-credits-pill" id="hud-session-credits">125,000 CR</span>
+      </div>
+      <div id="hud-skill-toast" class="hud-skill-toast hidden">NEAR MISS +250 CR</div>
+    </div>
+
     <!-- Top-Left Circular Minimap with North Badge -->
     <div class="hud-top">
       <div class="minimap-wrapper">
@@ -703,6 +871,18 @@
 
           <button id="btn-hud-gfx" class="hud-circle-btn active" title="Realistic Adaptive Graphics" aria-label="Realistic Graphics">
             <span id="hud-gfx-short">REALISTIC</span>
+          </button>
+
+          <button id="btn-hud-hazard" class="hud-circle-btn" title="Toggle Hazard Lights (H)" aria-label="Hazard Lights">
+            <svg viewBox="0 0 24 24" width="17" height="17">
+              <path d="M12 2L1 21h22L12 2zm0 4.8L19.5 19h-15L12 6.8zM11 10v4h2v-4h-2zm0 6v2h2v-2h-2z" fill="currentColor"/>
+            </svg>
+          </button>
+
+          <button id="btn-hud-horn" class="hud-circle-btn" title="Horn / Exhaust Rev (V)" aria-label="Horn">
+            <svg viewBox="0 0 24 24" width="17" height="17">
+              <path d="M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1l5 3V6L5 9H4z" fill="currentColor"/>
+            </svg>
           </button>
 
           <button id="btn-hud-reset" class="hud-circle-btn" title="Reset onto Road (R)" aria-label="Reset Car">
@@ -837,6 +1017,10 @@
       <div class="upper-touch-aux">
         <button id="touch-gear-down" class="touch-btn gear-paddle-btn" title="Shift Down (Q)" aria-label="Gear Down">M-</button>
         <button id="touch-gear-up" class="touch-btn gear-paddle-btn" title="Shift Up (E)" aria-label="Gear Up">M+</button>
+        <button id="touch-nitro" class="touch-btn nitro-btn" title="M-Boost Nitro (Shift / B)" aria-label="M-Boost Nitro">
+          <span class="nitro-bolt">&#9889;</span>
+          <small id="hud-nitro-pct">100%</small>
+        </button>
         <button id="touch-handbrake" class="touch-btn ebrake-btn" aria-label="Handbrake">
           <span class="ebrake-ring">(!)</span>
         </button>
