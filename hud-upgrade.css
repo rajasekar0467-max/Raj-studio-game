@@ -531,3 +531,19 @@ body.controls-flipped .touch-controls-right {
 @media (max-width: 680px) {
   .settings-preview-col { display: none; }
 }
+
+/* Subtle integration of upgraded UI dial & glass panel textures */
+.tach-svg-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  background: url('./assets/ui/speedometer_dial.png') center / contain no-repeat;
+  opacity: 0.28;
+  pointer-events: none;
+  z-index: 0;
+}
+.cluster-telemetry-bar {
+  background-image: url('./assets/ui/hud_glass_panel.png'), linear-gradient(180deg, rgba(12, 18, 28, 0.86) 0%, rgba(6, 10, 18, 0.94) 100%);
+  background-size: 100% 100%, auto;
+  background-repeat: no-repeat;
+}
