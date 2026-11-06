@@ -1116,3 +1116,229 @@ html, body {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+
+/* ==========================================================================
+   PHASE 2: GARAGE PERFORMANCE TUNING, VISUAL CUSTOMIZER & MULTIPLAYER HUB
+   ========================================================================== */
+.garage-mode-tabs {
+  display: flex;
+  gap: 8px;
+  background: rgba(8, 13, 24, 0.78);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 168, 255, 0.28);
+}
+
+.garage-tab-btn {
+  background: transparent;
+  color: #9fb2c8;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.garage-tab-btn.active {
+  background: linear-gradient(135deg, #0078d4 0%, #00a8ff 100%);
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(0, 168, 255, 0.45);
+}
+
+.garage-custom-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.custom-mini-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(8, 13, 23, 0.84);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 3px 7px;
+}
+
+.custom-mini-group small {
+  font-size: 0.64rem;
+  font-weight: 800;
+  color: #7e95b2;
+  letter-spacing: 0.08em;
+  margin-right: 3px;
+}
+
+.custom-mini-group .chip-btn {
+  padding: 4px 8px;
+  font-size: 0.68rem;
+}
+
+.garage-perf-drawer {
+  position: absolute;
+  left: 50%;
+  bottom: 76px;
+  transform: translateX(-50%);
+  width: min(740px, 66vw);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  z-index: 16;
+  pointer-events: auto;
+}
+
+.perf-upgrade-card {
+  background: rgba(8, 13, 24, 0.88);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 168, 255, 0.32);
+  border-radius: 11px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.perf-upg-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.perf-upg-head strong {
+  font-size: 0.78rem;
+  color: #eef5ff;
+  letter-spacing: 0.05em;
+}
+
+.perf-stage-pill {
+  font-size: 0.66rem;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(0, 168, 255, 0.18);
+  color: #48c6ff;
+  border: 1px solid rgba(0, 168, 255, 0.38);
+}
+
+.perf-upgrade-card p {
+  margin: 0;
+  font-size: 0.70rem;
+  color: #9ab0c8;
+  line-height: 1.25;
+}
+
+.perf-buy-btn {
+  align-self: flex-start;
+  margin-top: 2px;
+  font-size: 0.72rem !important;
+  padding: 5px 12px !important;
+}
+
+/* Multiplayer Hub */
+.mp-inline-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mp-inline-input input {
+  background: rgba(6, 10, 18, 0.9);
+  border: 1px solid rgba(0, 168, 255, 0.42);
+  color: #ffffff;
+  padding: 7px 11px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  width: 145px;
+  text-transform: uppercase;
+}
+
+.mp-roster-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mp-roster-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.76rem;
+  color: #a8bdd6;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mp-roster-header span {
+  color: #00d2ff;
+  font-weight: 800;
+}
+
+.mp-roster-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.mp-driver-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  background: rgba(12, 19, 32, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  font-size: 0.75rem;
+}
+
+.mp-driver-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mp-color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+}
+
+.mp-driver-tag {
+  font-weight: 800;
+  color: #f0f6ff;
+}
+
+.mp-driver-meta {
+  font-size: 0.68rem;
+  color: #78d8ff;
+  font-weight: 700;
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .garage-perf-drawer {
+    bottom: 58px;
+    gap: 6px;
+    width: min(640px, 62vw);
+  }
+  .perf-upgrade-card {
+    padding: 6px 9px;
+  }
+  .perf-upgrade-card p {
+    display: none;
+  }
+  .custom-mini-group .chip-btn {
+    padding: 3px 6px;
+    font-size: 0.62rem;
+  }
+}
