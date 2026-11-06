@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#060911" />
+  <meta name="theme-color" content="#050811" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <title>BMW PROJECT: ULTIMATE REALISTIC DRIVE</title>
+  <title>RR STUDIOS — BMW ULTIMATE REALISTIC DRIVE</title>
   <link rel="stylesheet" href="./style.css" />
   <link rel="stylesheet" href="./hud-upgrade.css" />
   <script type="importmap">
@@ -22,6 +22,10 @@
   <!-- Portrait Orientation Warning Overlay (Android / Mobile Landscape Enforcement) -->
   <div id="orientation-overlay" class="orientation-overlay hidden" role="dialog" aria-live="polite">
     <div class="orientation-card">
+      <div class="rr-emblem-mini">
+        <span>RR</span>
+        <small>STUDIOS</small>
+      </div>
       <div class="m-stripes">
         <span class="stripe-blue"></span>
         <span class="stripe-violet"></span>
@@ -34,31 +38,52 @@
         <polygon points="42,50 49,49 45,43" fill="#e41e26" />
       </svg>
       <h2>ROTATE YOUR PHONE TO LANDSCAPE</h2>
-      <p>BMW PROJECT: Ultimate Realistic Drive is designed for landscape widescreen driving. Rotate your phone horizontally to play.</p>
+      <p>RR STUDIOS — BMW Ultimate Realistic Drive is engineered for widescreen landscape cockpit and chase driving.</p>
       <button id="btn-dismiss-portrait" class="hud-pill-btn">CONTINUE ANYWAY</button>
     </div>
   </div>
 
-  <!-- WebGL Error Fallback -->
-  <div id="webgl-error" class="hidden">
+  <!-- WebGL 2 / Graphics Compatibility & Context Loss Screen (Part 8) -->
+  <div id="webgl-error" class="hidden" role="alertdialog" aria-labelledby="webgl-error-title">
     <div class="error-card">
-      <h2>WebGL 2 Graphics Notice</h2>
-      <p id="webgl-error-msg">Your device or browser does not support WebGL 2 or lost the graphics context.</p>
-      <button id="btn-reload-webgl" class="aaa-btn-primary" style="margin-top: 14px;">RELOAD SIMULATOR</button>
+      <div class="rr-emblem-mini">
+        <span>RR</span>
+        <small>STUDIOS</small>
+      </div>
+      <h2 id="webgl-error-title">WebGL Graphics Compatibility Notice</h2>
+      <p id="webgl-error-msg">Your device or browser could not initialize a 3D hardware rendering context or temporarily lost the GPU context.</p>
+      <div id="webgl-diag-box" class="diag-box">Checking device GPU capabilities...</div>
+      <div class="error-actions">
+        <button id="btn-reload-webgl" class="aaa-btn-primary">RETRY / RELOAD</button>
+      </div>
     </div>
   </div>
 
-  <!-- Loading Overlay -->
+  <!-- RR STUDIOS Loading Experience (Part 7) -->
   <div id="loading-screen">
+    <div class="loader-bg-glow"></div>
     <div class="loader-content">
+      <div class="rr-studio-crest">
+        <div class="rr-monogram">RR</div>
+        <div class="rr-studio-text">
+          <strong>RR STUDIOS</strong>
+          <span>AUTOMOTIVE SIMULATION DIVISION</span>
+        </div>
+      </div>
       <div class="m-stripes">
         <span class="stripe-blue"></span>
         <span class="stripe-violet"></span>
         <span class="stripe-red"></span>
       </div>
-      <h1>BMW <span>PROJECT</span></h1>
-      <p id="loading-status">Initializing WebGL 2 Pipeline &amp; PBR Shaders...</p>
-      <div class="progress-bar"><div id="progress-fill"></div></div>
+      <h1>BMW <span>ULTIMATE REALISTIC DRIVE</span></h1>
+      <p id="loading-status">Initializing WebGL Pipeline &amp; Realistic PBR Shaders...</p>
+      <div class="progress-bar">
+        <div id="progress-fill"></div>
+      </div>
+      <div class="loader-meta-row">
+        <span id="loading-asset-item">Preparing 3D Vehicle &amp; Open World...</span>
+        <strong id="loading-pct">0%</strong>
+      </div>
     </div>
   </div>
 
@@ -72,10 +97,14 @@
   </div>
 
   <!-- ====================================================================
-       SCREEN 1: AAA MAIN MENU (Matches 01_main_menu.png)
+       SCREEN 1: RR STUDIOS AAA MAIN MENU (Part 2)
        ==================================================================== -->
   <div id="main-menu" class="aaa-screen main-menu-screen">
     <div class="main-menu-top-left">
+      <div class="rr-brand-pill">
+        <span class="rr-badge-box">RR</span>
+        <span class="rr-badge-text">RR STUDIOS // PHASE 1 FOUNDATION</span>
+      </div>
       <div class="hero-brand-title">
         <span class="hero-bmw">BMW</span> <span class="hero-project">PROJECT</span>
       </div>
@@ -88,47 +117,58 @@
         <span class="hero-subtitle-text">ULTIMATE REALISTIC DRIVE</span>
         <span class="hero-accent-lines"></span>
       </div>
-      <div id="menu-env-summary" class="hero-env-pill">GOLDEN HOUR | CLEAR | HIGH PRESET</div>
+      <div id="menu-env-summary" class="hero-env-pill">GOLDEN HOUR | CLEAR | REALISTIC GRAPHICS</div>
     </div>
 
     <div class="main-menu-top-right">
       <div class="menu-fps-pill" id="menu-fps-badge">FPS: 60</div>
       <div class="menu-version-row">
-        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
           <path d="M3 18h18v2H3v-2zm0-3l3-8 6 4 6-4 3 8H3z" fill="#ffcc29" />
         </svg>
-        <span>v2.0</span>
+        <span>RR STUDIOS v2.5</span>
       </div>
     </div>
 
-    <!-- Right-side vertical AAA action stack -->
+    <!-- Right-side vertical AAA action stack (Part 2: 7 required items) -->
     <nav class="main-menu-nav" aria-label="Main Menu">
       <button id="btn-start-drive" class="aaa-menu-card primary">
         <span class="card-icon-box">
-          <svg viewBox="0 0 24 24" width="24" height="24"><polygon points="7,5 19,12 7,19" fill="currentColor"/></svg>
+          <svg viewBox="0 0 24 24" width="22" height="22"><polygon points="7,5 19,12 7,19" fill="currentColor"/></svg>
         </span>
         <span class="card-label" id="lbl-play-btn">PLAY</span>
+        <span class="card-tag">FULLSCREEN</span>
       </button>
 
       <button id="btn-continue-drive" class="aaa-menu-card hidden">
         <span class="card-icon-box">
-          <svg viewBox="0 0 24 24" width="22" height="22"><polygon points="7,5 19,12 7,19" fill="currentColor"/></svg>
+          <svg viewBox="0 0 24 24" width="20" height="20"><polygon points="7,5 19,12 7,19" fill="currentColor"/></svg>
         </span>
         <span class="card-label">RESUME DRIVE</span>
       </button>
 
       <button id="btn-open-garage" class="aaa-menu-card">
         <span class="card-icon-box">
-          <svg viewBox="0 0 24 24" width="22" height="22">
+          <svg viewBox="0 0 24 24" width="20" height="20">
             <path d="M5 11l1.5-4.5h11L19 11m-1.5 5a1.5 1.5 0 0 1-1.5-1.5 1.5 1.5 0 0 1 1.5-1.5 1.5 1.5 0 0 1 1.5 1.5 1.5 1.5 0 0 1-1.5 1.5m-11 0A1.5 1.5 0 0 1 5 14.5 1.5 1.5 0 0 1 6.5 13 1.5 1.5 0 0 1 8 14.5 1.5 1.5 0 0 1 6.5 16M18.92 6c-.2-.58-.76-1-1.42-1h-11c-.66 0-1.22.42-1.42 1L3 12v8a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-8l-2.08-6z" fill="currentColor"/>
           </svg>
         </span>
         <span class="card-label">GARAGE</span>
       </button>
 
+      <button id="btn-open-multiplayer" class="aaa-menu-card">
+        <span class="card-icon-box">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" fill="currentColor"/>
+          </svg>
+        </span>
+        <span class="card-label">MULTIPLAYER</span>
+        <span class="card-tag soon-tag">SOON</span>
+      </button>
+
       <button id="btn-open-settings" class="aaa-menu-card">
         <span class="card-icon-box">
-          <svg viewBox="0 0 24 24" width="22" height="22">
+          <svg viewBox="0 0 24 24" width="20" height="20">
             <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z" fill="currentColor"/>
           </svg>
         </span>
@@ -137,7 +177,7 @@
 
       <button id="btn-open-controls" class="aaa-menu-card">
         <span class="card-icon-box">
-          <svg viewBox="0 0 24 24" width="22" height="22">
+          <svg viewBox="0 0 24 24" width="20" height="20">
             <path d="M17.5 7H6.5C4 7 2 9 2 11.5v3.25C2 16.55 3.45 18 5.25 18c.9 0 1.72-.37 2.31-.96L9.5 15h5l1.94 2.04c.59.59 1.41.96 2.31.96 1.8 0 3.25-1.45 3.25-3.25V11.5C22 9 20 7 17.5 7zM8 13H6v2H5v-2H3v-1h2v-2h1v2h2v1zm8.5 1a1 1 0 1 1 0-2 1 1 0 0 1 0 2zm2-2a1 1 0 1 1 0-2 1 1 0 0 1 0 2z" fill="currentColor"/>
           </svg>
         </span>
@@ -146,11 +186,20 @@
 
       <button id="btn-open-sound" class="aaa-menu-card">
         <span class="card-icon-box">
-          <svg viewBox="0 0 24 24" width="22" height="22">
+          <svg viewBox="0 0 24 24" width="20" height="20">
             <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" fill="currentColor"/>
           </svg>
         </span>
         <span class="card-label">SOUND</span>
+      </button>
+
+      <button id="btn-open-about" class="aaa-menu-card">
+        <span class="card-icon-box">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="currentColor"/>
+          </svg>
+        </span>
+        <span class="card-label">ABOUT RR STUDIOS</span>
       </button>
     </nav>
 
@@ -166,7 +215,7 @@
   </div>
 
   <!-- ====================================================================
-       SCREEN 2: GARAGE & VEHICLE CUSTOMIZATION (Matches 03_garage.png)
+       SCREEN 2: GARAGE & VEHICLE CUSTOMIZATION
        ==================================================================== -->
   <div id="garage-screen" class="aaa-screen garage-screen hidden">
     <header class="subscreen-header">
@@ -180,9 +229,9 @@
       </div>
 
       <div class="garage-currency-pill">
-        <span class="coin-badge">M</span>
-        <strong id="garage-credits">125,000</strong>
-        <span class="plus-badge">RWD</span>
+        <span class="coin-badge">RR</span>
+        <strong id="garage-credits">REALISTIC PBR</strong>
+        <span class="plus-badge">510 HP</span>
       </div>
     </header>
 
@@ -227,7 +276,6 @@
       </div>
     </aside>
 
-    <!-- Bottom Navigation Actions -->
     <footer class="subscreen-footer">
       <button id="btn-garage-back" class="aaa-btn-secondary">
         <svg viewBox="0 0 24 24" width="18" height="18"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/></svg>
@@ -241,7 +289,7 @@
   </div>
 
   <!-- ====================================================================
-       SCREEN 3: SETTINGS MENU (Matches 04_settings.png)
+       SCREEN 3: SETTINGS MENU (Part 4: Single REALISTIC Graphics Mode)
        ==================================================================== -->
   <div id="settings-screen" class="aaa-screen settings-screen hidden">
     <header class="subscreen-header">
@@ -257,7 +305,6 @@
     </header>
 
     <div class="settings-frame">
-      <!-- Top Horizontal Category Tabs -->
       <nav class="settings-tabs" aria-label="Settings Categories">
         <button class="settings-tab-btn tab-btn active" data-panel="panel-graphics">
           <svg viewBox="0 0 24 24" width="18" height="18"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 1.99-.9 1.99-2L23 5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z" fill="currentColor"/></svg>
@@ -279,28 +326,38 @@
 
       <div class="settings-content-grid">
         <div class="settings-panels-col">
-          <!-- TAB 1: GRAPHICS -->
+          <!-- TAB 1: GRAPHICS (Unified REALISTIC Master Engine) -->
           <div id="panel-graphics" class="menu-panel">
             <div class="setting-line">
-              <label>Graphics Quality</label>
+              <label>Graphics Engine Mode</label>
               <div class="btn-group segmented-group" id="preset-select">
-                <button class="chip-btn" data-preset="low">Low</button>
-                <button class="chip-btn" data-preset="medium">Medium</button>
-                <button class="chip-btn active" data-preset="high">High</button>
-                <button class="chip-btn" data-preset="ultra">Ultra</button>
+                <button class="chip-btn active" data-preset="realistic">REALISTIC (AUTO-ADAPTIVE PBR)</button>
               </div>
             </div>
 
             <div class="setting-line">
-              <label>Resolution Scale</label>
+              <label>Hardware Profile Status</label>
+              <span class="hardware-tier-badge" id="lbl-hw-tier">DETECTING GPU TIER...</span>
+            </div>
+
+            <div class="setting-line">
+              <label>Adaptive Dynamic Resolution</label>
+              <label class="ios-switch">
+                <input type="checkbox" id="toggle-auto-res" checked />
+                <span class="switch-track"></span>
+              </label>
+            </div>
+
+            <div class="setting-line">
+              <label>Target Resolution Scale</label>
               <div class="slider-control">
-                <input type="range" id="slider-res" min="0.5" max="1.25" step="0.05" value="1.0" />
+                <input type="range" id="slider-res" min="0.6" max="1.25" step="0.05" value="1.0" />
                 <span class="slider-val" id="lbl-res-scale">100%</span>
               </div>
             </div>
 
             <div class="setting-line">
-              <label>Real-Time Shadows</label>
+              <label>Real-Time Cascaded Shadows</label>
               <label class="ios-switch">
                 <input type="checkbox" id="toggle-shadows" checked />
                 <span class="switch-track"></span>
@@ -316,7 +373,7 @@
             </div>
 
             <div class="setting-line">
-              <label>ACES Filmic Post-Processing</label>
+              <label>ACES Filmic Tone Mapping</label>
               <label class="ios-switch">
                 <input type="checkbox" id="toggle-postfx" checked />
                 <span class="switch-track"></span>
@@ -324,7 +381,7 @@
             </div>
 
             <div class="setting-line">
-              <label>Fullscreen Mode</label>
+              <label>Immersive Fullscreen</label>
               <label class="ios-switch">
                 <input type="checkbox" id="toggle-fullscreen" />
                 <span class="switch-track"></span>
@@ -359,7 +416,7 @@
             </div>
 
             <div class="setting-line">
-              <label>Ambient Music Synth</label>
+              <label>Ambient Environment Audio</label>
               <div class="slider-control">
                 <input type="range" id="slider-music-vol" min="0" max="100" step="5" value="40" />
                 <span class="slider-val" id="lbl-music-vol">40%</span>
@@ -367,7 +424,7 @@
             </div>
 
             <div class="setting-line">
-              <label>Tire &amp; Wind Effects Volume</label>
+              <label>Tire, Wind &amp; UI Effects Volume</label>
               <div class="slider-control">
                 <input type="range" id="slider-fx-vol" min="0" max="100" step="5" value="85" />
                 <span class="slider-val" id="lbl-fx-vol">85%</span>
@@ -394,10 +451,18 @@
             </div>
 
             <div class="setting-line">
-              <label>Touch Button Scale</label>
+              <label>Touch Control Size</label>
               <div class="slider-control">
                 <input type="range" id="slider-touch-scale" min="85" max="125" step="5" value="100" />
                 <span class="slider-val" id="lbl-touch-scale">100%</span>
+              </div>
+            </div>
+
+            <div class="setting-line">
+              <label>Transmission Shift Mode</label>
+              <div class="btn-group segmented-group" id="trans-select">
+                <button class="chip-btn active" data-trans="auto">M-Steptronic Auto</button>
+                <button class="chip-btn" data-trans="manual">Manual Paddles (M+/M-)</button>
               </div>
             </div>
 
@@ -473,13 +538,13 @@
           </div>
         </div>
 
-        <!-- Right Visual Preview Card (Matches 04_settings.png) -->
+        <!-- Right Visual Preview Card -->
         <aside class="settings-preview-col">
           <div class="preview-card-frame">
-            <img id="settings-preview-img" src="./assets/ui/settings_preview_card.png" alt="Environment Preview" />
+            <img id="settings-preview-img" src="./assets/ui/settings_preview_card.png" alt="Realistic Engine Preview" />
             <div class="preview-card-caption">
-              <strong id="preview-preset-title">HIGH PRESET</strong>
-              <span id="preview-env-sub">PBR Clearcoat + Dynamic Shadows</span>
+              <strong id="preview-preset-title">REALISTIC GRAPHICS</strong>
+              <span id="preview-env-sub">Auto-Adaptive PBR + Dynamic Resolution</span>
             </div>
           </div>
         </aside>
@@ -499,7 +564,7 @@
   </div>
 
   <!-- ====================================================================
-       SCREEN 4: PAUSE MENU OVERLAY (Matches 05_pause_menu.png)
+       SCREEN 4: PAUSE MENU OVERLAY (Part 6)
        ==================================================================== -->
   <div id="pause-menu" class="aaa-screen pause-screen hidden">
     <div class="pause-left-column">
@@ -515,14 +580,14 @@
       <nav class="pause-nav" aria-label="Pause Menu">
         <button id="btn-pause-resume" class="aaa-menu-card primary">
           <span class="card-icon-box">
-            <svg viewBox="0 0 24 24" width="22" height="22"><polygon points="7,5 19,12 7,19" fill="currentColor"/></svg>
+            <svg viewBox="0 0 24 24" width="20" height="20"><polygon points="7,5 19,12 7,19" fill="currentColor"/></svg>
           </span>
           <span class="card-label">RESUME</span>
         </button>
 
         <button id="btn-pause-restart" class="aaa-menu-card">
           <span class="card-icon-box">
-            <svg viewBox="0 0 24 24" width="22" height="22">
+            <svg viewBox="0 0 24 24" width="20" height="20">
               <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/>
             </svg>
           </span>
@@ -531,7 +596,7 @@
 
         <button id="btn-pause-garage" class="aaa-menu-card">
           <span class="card-icon-box">
-            <svg viewBox="0 0 24 24" width="22" height="22">
+            <svg viewBox="0 0 24 24" width="20" height="20">
               <path d="M5 11l1.5-4.5h11L19 11m-1.5 5a1.5 1.5 0 0 1-1.5-1.5 1.5 1.5 0 0 1 1.5-1.5 1.5 1.5 0 0 1 1.5 1.5 1.5 1.5 0 0 1-1.5 1.5m-11 0A1.5 1.5 0 0 1 5 14.5 1.5 1.5 0 0 1 6.5 13 1.5 1.5 0 0 1 8 14.5 1.5 1.5 0 0 1 6.5 16M18.92 6c-.2-.58-.76-1-1.42-1h-11c-.66 0-1.22.42-1.42 1L3 12v8a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-1h12v1a1 1 0 0 0 1 1h1a1 1 0 0 0 1-1v-8l-2.08-6z" fill="currentColor"/>
             </svg>
           </span>
@@ -540,7 +605,7 @@
 
         <button id="btn-pause-settings" class="aaa-menu-card">
           <span class="card-icon-box">
-            <svg viewBox="0 0 24 24" width="22" height="22">
+            <svg viewBox="0 0 24 24" width="20" height="20">
               <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z" fill="currentColor"/>
             </svg>
           </span>
@@ -549,7 +614,7 @@
 
         <button id="btn-pause-mainmenu" class="aaa-menu-card">
           <span class="card-icon-box">
-            <svg viewBox="0 0 24 24" width="22" height="22"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/></svg>
+            <svg viewBox="0 0 24 24" width="20" height="20"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/></svg>
           </span>
           <span class="card-label">MAIN MENU</span>
         </button>
@@ -558,7 +623,30 @@
   </div>
 
   <!-- ====================================================================
-       SCREEN 5: EXIT CONFIRMATION MODAL (Matches 06_exit_confirmation.png)
+       SCREEN 5: INFO MODAL (Multiplayer Coming Soon & About RR Studios)
+       ==================================================================== -->
+  <div id="info-modal" class="exit-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="info-modal-title">
+    <div class="exit-modal-card info-modal-card">
+      <div class="rr-emblem-mini">
+        <span>RR</span>
+        <small>STUDIOS</small>
+      </div>
+      <h3 id="info-modal-title">ABOUT RR STUDIOS</h3>
+      <p id="info-modal-desc">RR STUDIOS — BMW Ultimate Realistic Drive (Phase 1 Foundation Overhaul).</p>
+      <div id="info-modal-badges" class="info-badges-grid">
+        <div><span>ENGINE</span><strong>Three.js WebGL 2 PBR</strong></div>
+        <div><span>GRAPHICS</span><strong>Realistic Auto-Adaptive</strong></div>
+        <div><span>VEHICLE</span><strong>M4 Competition Coupe</strong></div>
+        <div><span>PLATFORM</span><strong>Android Landscape First</strong></div>
+      </div>
+      <div class="exit-modal-actions">
+        <button id="btn-info-close" class="aaa-btn-primary" style="width:100%;">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================================================================
+       SCREEN 6: EXIT CONFIRMATION MODAL
        ==================================================================== -->
   <div id="exit-modal" class="exit-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="exit-modal-title">
     <div class="exit-modal-card">
@@ -577,8 +665,7 @@
   </div>
 
   <!-- ====================================================================
-       SCREEN 6: IN-GAME DRIVING HUD & DIGITAL SPEEDOMETER
-       (Matches 02_driving_speedometer_hud.png)
+       SCREEN 7: IN-GAME DRIVING HUD & DIGITAL SPEEDOMETER (Part 3 & Part 5)
        ==================================================================== -->
   <div id="driving-hud" class="hidden">
     <!-- Top-Left Circular Minimap with North Badge -->
@@ -595,36 +682,36 @@
       <div class="hud-top-right-stack">
         <div class="hud-top-right">
           <button id="btn-hud-camera" class="hud-circle-btn" title="Switch Camera (C)" aria-label="Switch Camera">
-            <svg viewBox="0 0 24 24" width="20" height="20">
+            <svg viewBox="0 0 24 24" width="18" height="18">
               <path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z" fill="currentColor"/>
             </svg>
             <span class="cam-sub-label" id="hud-cam-label">CHASE</span>
           </button>
 
           <button id="btn-hud-lights" class="hud-circle-btn active" title="Toggle Headlights (L)" aria-label="Toggle Headlights">
-            <svg viewBox="0 0 24 24" width="20" height="20">
+            <svg viewBox="0 0 24 24" width="18" height="18">
               <path d="M12 6a6 6 0 0 1 6 6c0 2.22-1.21 4.16-3 5.2V19a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1v-1.8c-1.79-1.04-3-2.98-3-5.2a6 6 0 0 1 6-6zm2 15v1a1 1 0 0 1-1 1h-2a1 1 0 0 1-1-1v-1h4z" fill="currentColor"/>
             </svg>
           </button>
 
           <button id="btn-hud-sound" class="hud-circle-btn active" title="Toggle Audio (M)" aria-label="Toggle Audio">
-            <svg viewBox="0 0 24 24" width="20" height="20">
+            <svg viewBox="0 0 24 24" width="18" height="18">
               <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02z" fill="currentColor"/>
             </svg>
           </button>
 
-          <button id="btn-hud-gfx" class="hud-circle-btn" title="Cycle Graphics" aria-label="Cycle Graphics">
-            <span id="hud-gfx-short">HIGH</span>
+          <button id="btn-hud-gfx" class="hud-circle-btn active" title="Realistic Adaptive Graphics" aria-label="Realistic Graphics">
+            <span id="hud-gfx-short">REALISTIC</span>
           </button>
 
           <button id="btn-hud-reset" class="hud-circle-btn" title="Reset onto Road (R)" aria-label="Reset Car">
-            <svg viewBox="0 0 24 24" width="19" height="19">
+            <svg viewBox="0 0 24 24" width="18" height="18">
               <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" fill="currentColor"/>
             </svg>
           </button>
 
           <button id="btn-hud-pause" class="hud-circle-btn pause-btn" title="Pause Menu (ESC)" aria-label="Pause Game">
-            <svg viewBox="0 0 24 24" width="20" height="20">
+            <svg viewBox="0 0 24 24" width="18" height="18">
               <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" fill="currentColor"/>
             </svg>
           </button>
@@ -638,11 +725,11 @@
             <span class="tele-fps" id="hud-fps">60 FPS</span>
           </div>
           <div class="tele-row">
-            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z" fill="#e8eef5"/></svg>
+            <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 0 1 0-5 2.5 2.5 0 0 1 0 5z" fill="#e8eef5"/></svg>
             <span id="hud-city-short">City</span>
           </div>
           <div class="tele-row">
-            <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" fill="#e8eef5"/></svg>
+            <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" fill="#e8eef5"/></svg>
             <span id="hud-clock-time">17:45</span>
           </div>
           <span id="hud-env-badge" class="hidden">SUNSET | CLEAR</span>
@@ -650,15 +737,15 @@
       </div>
     </div>
 
-    <!-- Center-Bottom BMW M Digital Speedometer & Tachometer Cluster -->
+    <!-- Center-Bottom Contoured BMW M Digital Speedometer Cluster -->
     <div class="instrument-cluster" id="hud-cluster">
-      <!-- Left Wing: Fuel Level & Indicators -->
+      <!-- Left Wing: Fuel Level & Turn/Light Indicators -->
       <div class="cluster-wing wing-left">
         <div class="wing-top-icons">
           <span id="ind-turn-left" class="dash-ind" title="Left Signal">&#9664;</span>
           <span id="ind-headlights" class="dash-ind active" title="Headlights">&#9728;</span>
         </div>
-        <svg class="wing-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <svg class="wing-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
           <path d="M19.77 7.23l.01-.01-3.72-3.72L15 4.56l2.11 2.11c-.94.36-1.61 1.26-1.61 2.33a2.5 2.5 0 0 0 2.5 2.5c.36 0 .69-.08 1-.21v7.21c0 .55-.45 1-1 1s-1-.45-1-1V14c0-1.1-.9-2-2-2h-1V5c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v16h10v-7.5h1.5v5a2.5 2.5 0 0 0 5 0V9c0-.69-.28-1.32-.73-1.77zM12 10H6V5h6v5z" fill="currentColor"/>
         </svg>
         <strong id="hud-fuel">98%</strong>
@@ -683,16 +770,11 @@
             </filter>
           </defs>
 
-          <!-- Outer metallic bezel & background track -->
           <path d="M 26 130 A 116 116 0 0 1 254 130" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="14" stroke-linecap="butt" />
-          <!-- Redline warning zone backing (6.5k - 8k) -->
           <path d="M 222 48 A 116 116 0 0 1 254 130" fill="none" stroke="rgba(228,30,38,0.32)" stroke-width="14" />
-          <!-- Dynamic RPM active arc (stroke-dasharray=364.4) -->
           <path id="tach-active-arc" d="M 26 130 A 116 116 0 0 1 254 130" fill="none" stroke="url(#tachGrad)" stroke-width="12" stroke-dasharray="364.4" stroke-dashoffset="320" filter="url(#tachGlow)" />
-          <!-- Tick marks overlay -->
           <path d="M 26 130 A 116 116 0 0 1 254 130" fill="none" stroke="rgba(8,11,18,0.75)" stroke-width="14" stroke-dasharray="3 9.1" />
 
-          <!-- Scale labels 0..8 -->
           <g class="tach-nums" fill="#c8d6e8" font-size="11" font-weight="800" text-anchor="middle">
             <text x="43" y="126">0</text>
             <text x="48" y="92">1</text>
@@ -706,7 +788,6 @@
           </g>
         </svg>
 
-        <!-- Central Digital Readout -->
         <div class="cluster-readout">
           <div class="speed-box">
             <span id="hud-speed">0</span>
@@ -718,44 +799,47 @@
           </div>
         </div>
 
-        <!-- Bottom RPM Bar & Label -->
         <div class="rpm-bar-container">
           <div id="rpm-bar-fill"></div>
         </div>
         <div class="cluster-bottom-meta">
-          <span id="hud-mode-pill" class="meta-pill">M-DYNAMIC</span>
+          <span id="hud-mode-pill" class="meta-pill">ENGINE OK</span>
           <span class="rpm-caption">RPM x1000 (<b id="hud-rpm">850</b>)</span>
           <span id="hud-shift-pill" class="meta-pill shift-pill">SHIFT</span>
         </div>
       </div>
 
-      <!-- Right Wing: Engine Temp & Handbrake Status -->
+      <!-- Right Wing: Engine Temp & Handbrake / Right Turn Signal -->
       <div class="cluster-wing wing-right">
         <div class="wing-top-icons">
           <span id="ind-handbrake" class="dash-ind brake-ind" title="Parking Brake">(!)</span>
           <span id="ind-turn-right" class="dash-ind" title="Right Signal">&#9654;</span>
         </div>
-        <svg class="wing-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+        <svg class="wing-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
           <path d="M15 13V5c0-1.66-1.34-3-3-3S9 3.34 9 5v8c-1.21.91-2 2.37-2 4 0 2.76 2.24 5 5 5s5-2.24 5-5c0-1.63-.79-3.09-2-4zm-4-8c0-.55.45-1 1-1s1 .45 1 1h-1v1h1v2h-1v1h1v2h-2V5z" fill="currentColor"/>
         </svg>
         <strong id="hud-temp">90&deg;C</strong>
       </div>
     </div>
 
-    <!-- Mobile Touch Controls (Matches 02_driving_speedometer_hud.png) -->
+    <!-- Mobile Touch Controls (Part 5: Steering + Pedals + Handbrake + Gear Paddles) -->
     <div class="touch-controls-left" id="touch-left-group">
       <button id="touch-left" class="touch-btn steer-btn" aria-label="Steer Left">
-        <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z" fill="currentColor"/></svg>
+        <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z" fill="currentColor"/></svg>
       </button>
       <button id="touch-right" class="touch-btn steer-btn" aria-label="Steer Right">
-        <svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" fill="currentColor"/></svg>
+        <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" fill="currentColor"/></svg>
       </button>
     </div>
 
     <div class="touch-controls-right" id="touch-right-group">
-      <button id="touch-handbrake" class="touch-btn ebrake-btn" aria-label="Handbrake">
-        <span class="ebrake-ring">(!)</span>
-      </button>
+      <div class="upper-touch-aux">
+        <button id="touch-gear-down" class="touch-btn gear-paddle-btn" title="Shift Down (Q)" aria-label="Gear Down">M-</button>
+        <button id="touch-gear-up" class="touch-btn gear-paddle-btn" title="Shift Up (E)" aria-label="Gear Up">M+</button>
+        <button id="touch-handbrake" class="touch-btn ebrake-btn" aria-label="Handbrake">
+          <span class="ebrake-ring">(!)</span>
+        </button>
+      </div>
       <div class="pedals-row">
         <button id="touch-brake" class="touch-btn pedal-brake" aria-label="Brake and Reverse">
           <span class="pedal-grooves"></span>
