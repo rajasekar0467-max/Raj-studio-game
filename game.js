@@ -813,7 +813,7 @@ class UltimateDriveSimulator {
     show(UI.hud, screen === 'DRIVING');
 
     if (this.garageRing) {
-      this.garageRing.visible = screen === 'GARAGE';
+      this.garageRing.visible = (screen === 'GARAGE' || screen === 'MAIN_MENU');
     }
 
     if (screen === 'DRIVING') {
@@ -1370,7 +1370,7 @@ class UltimateDriveSimulator {
     );
     this.garageRing.position.y = 0.04;
     this.garageRing.renderOrder = 3;
-    this.garageRing.visible = false;
+    this.garageRing.visible = true;
     this.carRig.root.add(this.garageRing);
   }
 
@@ -2237,7 +2237,8 @@ class UltimateDriveSimulator {
           float h = d.y;
           vec3 c = h > 0.0 ? mix(horizon, top, pow(h, 0.55)) : mix(horizon, ground, clamp(-h * 5.0, 0.0, 1.0));
           if (h > 0.0 && skyMix > 0.0) {
-            vec3 tx = texture2D(skyTex, vec2(0.5 + 0.12 * d.x, 0.5 + asin(clamp(h, 0.0, 1.0)) / 3.14159265)).rgb * skyTint;
+            vec2 skyUV = vec2(fract(0.5 + atan(d.z, d.x) / 6.2831853), clamp(pow(clamp(h, 0.0, 1.0), 0.72), 0.02, 0.98));
+            vec3 tx = texture2D(skyTex, skyUV).rgb * skyTint;
             c = mix(c, tx, skyMix * smoothstep(0.04, 0.55, h));
           }
           float s = max(dot(d, normalize(sunDir)), 0.0);
@@ -2481,7 +2482,7 @@ class UltimateDriveSimulator {
   // PART 7: MEASURED ASSET LOADING WITH REAL PROGRESS FEEDBACK
   // --------------------------------------------------------------------------
   loadAssets() {
-    const totalExpected = 8;
+    const totalExpected = 14;
     let settledCount = 0;
     const recordAssetProgress = (name) => {
       settledCount = Math.min(totalExpected, settledCount + 1);
@@ -2536,24 +2537,53 @@ class UltimateDriveSimulator {
       this.assets.asphalt = t;
       this.applyBump();
     });
+    load('textures/asphalt_normal_512.png', 'Road Micro-Relief Normal', (t) => {
+      t.colorSpace = THREE.NoColorSpace;
+      tile(t, 4, this.roadLength / this.laneTiles / 4);
+      this.assets.asphaltNormal = t;
+      this.applyBump();
+    });
     load('textures/lane_markings_512.png', 'Lane Markings', (t) => {
       this.drawLaneOverlay(t.image);
       t.dispose();
     });
     load('textures/grass_512.png', 'Terrain Grass', (t) => {
-      setMap(this.groundMat, tile(t, 1200, 1200), 0xa8c690);
+      setMap(this.groundMat, tile(t, 1200, 1200), 0xc4d8b4);
     });
     load('textures/concrete_512.png', 'Urban Concrete', (t) => {
-      setMap(this.sidewalkMat, tile(t, 1, 1), 0xb8bcc2);
-      setMap(this.barrierMat, t, 0xaab0b8);
+      setMap(this.sidewalkMat, tile(t, 1, 1), 0xc8ccd2);
+      setMap(this.barrierMat, t, 0xb8bec6);
       const rock = t.clone(); rock.repeat.set(10, 6); rock.needsUpdate = true;
-      setMap(this.mountainMat, rock, 0x6a7078);
+      setMap(this.mountainMat, rock, 0x767c86);
       const tun = t.clone(); tun.repeat.set(10, 14); tun.needsUpdate = true;
-      setMap(this.tunnelMat, tun, 0x9aa0a8);
+      setMap(this.tunnelMat, tun, 0xa2a8b0);
       this.facade.draw(t.image);
       this.assets.concrete = t;
     });
+    load('textures/building_facade_512.png', 'Architectural Curtain Wall', (t) => {
+      tile(t, 1, 1);
+      setMap(this.bldgMat, t);
+      this.assets.bldgFacade = t;
+    });
+    load('textures/building_emissive_512.png', 'City Night Illumination', (t) => {
+      tile(t, 1, 1);
+      const old = this.bldgMat.emissiveMap;
+      this.bldgMat.emissiveMap = t;
+      this.bldgMat.needsUpdate = true;
+      if (old && old !== t) old.dispose();
+      this.assets.bldgEmissive = t;
+    });
+    load('textures/water_normal_512.png', 'Ocean Wave Normals', (t) => {
+      t.colorSpace = THREE.NoColorSpace;
+      tile(t, 42, 42);
+      this.oceanMat.normalMap = t;
+      this.oceanMat.normalScale = new THREE.Vector2(0.45, 0.45);
+      this.oceanMat.needsUpdate = true;
+      this.assets.waterNormal = t;
+    });
     load('environment/sky_gradient_1024x512.png', 'HDRI Sky Dome', (t) => {
+      t.wrapS = THREE.RepeatWrapping;
+      t.wrapT = THREE.ClampToEdgeWrapping;
       t.generateMipmaps = false;
       t.minFilter = THREE.LinearFilter;
       this.skyUniforms.skyTex.value = t;
@@ -2572,6 +2602,8 @@ class UltimateDriveSimulator {
     });
     load('textures/carbon_fiber_512.png', 'M-Carbon Weave', (t) => { this.assets.carbon = tile(t, 2, 2); this.applyCarTextures(); });
     load('textures/tire_rubber_512.png', 'Performance Tire Tread', (t) => { this.assets.tire = tile(t, 6, 1); this.applyCarTextures(); });
+    load('textures/interior_leather_512.png', 'Merino Leather Interior', (t) => { this.assets.leather = tile(t, 4, 4); this.applyCarTextures(); });
+    load('textures/brushed_metal_512.png', 'CNC Brushed Alloys', (t) => { this.assets.metal = tile(t, 2, 2); this.applyCarTextures(); });
 
     this.loadVehicleGLB(ASSET('vehicles/bmw_m4.glb'), new GLTFLoader());
 
@@ -2604,13 +2636,15 @@ class UltimateDriveSimulator {
   }
 
   applyCarTextures() {
-    const { carbon, tire } = this.assets;
+    const { carbon, tire, leather, metal } = this.assets;
     this.carRig.root.traverse((o) => {
       const m = o.isMesh ? o.material : null;
-      if (!m || Array.isArray(m) || !m.isMeshStandardMaterial || m.userData.texDone) return;
-      const hex = m.color.getHex();
-      if (carbon && hex === 0x15171a) { m.map = carbon; m.color.setHex(0xffffff); m.needsUpdate = true; m.userData.texDone = true; }
-      else if (tire && hex === 0x121316) { m.map = tire; m.color.setHex(0xffffff); m.needsUpdate = true; m.userData.texDone = true; }
+      if (!m || Array.isArray(m) || !m.isMeshStandardMaterial) return;
+      const hex = m.userData.origHex !== undefined ? m.userData.origHex : (m.userData.origHex = m.color.getHex());
+      if (carbon && hex === 0x15171a && m.map !== carbon) { m.map = carbon; m.color.setHex(0xffffff); m.needsUpdate = true; }
+      else if (tire && hex === 0x121316 && m.map !== tire) { m.map = tire; m.color.setHex(0xffffff); m.needsUpdate = true; }
+      else if (leather && (hex === 0x181c24 || hex === 0x10131a) && m.map !== leather) { m.map = leather; m.color.setHex(0xd8e0ec); m.needsUpdate = true; }
+      else if (metal && hex === 0x262b33 && m.map !== metal) { m.map = metal; m.color.setHex(0xb8c2d0); m.needsUpdate = true; }
     });
   }
 
@@ -2781,9 +2815,17 @@ class UltimateDriveSimulator {
   }
 
   applyBump() {
-    const want = this.cfg && this.cfg.bump && this.assets.asphalt ? this.assets.asphalt : null;
+    const wantBump = this.cfg && this.cfg.bump && this.assets.asphalt ? this.assets.asphalt : null;
+    const wantNorm = this.cfg && this.cfg.bump && this.assets.asphaltNormal ? this.assets.asphaltNormal : null;
     const m = this.roadMaterial;
-    if (m.bumpMap !== want) { m.bumpMap = want; m.bumpScale = 0.3; m.needsUpdate = true; }
+    if (m.bumpMap !== wantBump || m.normalMap !== wantNorm) {
+      m.bumpMap = wantBump;
+      m.bumpScale = 0.24;
+      m.normalMap = wantNorm;
+      if (!m.normalScale) m.normalScale = new THREE.Vector2(0.55, 0.55);
+      else m.normalScale.set(0.55, 0.55);
+      m.needsUpdate = true;
+    }
   }
 
   tAtPoint(x, z) {
