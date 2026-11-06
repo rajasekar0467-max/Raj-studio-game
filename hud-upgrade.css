@@ -547,3 +547,152 @@ body.controls-flipped .touch-controls-right {
   background-size: 100% 100%, auto;
   background-repeat: no-repeat;
 }
+
+
+/* ==========================================================================
+   PHASE 2: EVENT TELEMETRY BANNER, 3D NAMETAGS & M-BOOST NITRO BUTTON
+   ========================================================================== */
+.mp-nametags-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 12;
+  overflow: hidden;
+}
+
+.mp-nametag-pill {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  background: rgba(6, 11, 20, 0.82);
+  border: 1px solid rgba(0, 185, 255, 0.55);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: #f0f7ff;
+  white-space: nowrap;
+  letter-spacing: 0.05em;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+.mp-nametag-pill b {
+  color: #00d2ff;
+  margin-left: 4px;
+}
+
+.hud-event-banner {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 18;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  pointer-events: none;
+}
+
+.event-main-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(7, 12, 22, 0.82);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 168, 255, 0.36);
+  border-radius: 999px;
+  padding: 4px 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.event-mode-tag {
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #00d2ff;
+  background: rgba(0, 168, 255, 0.16);
+  padding: 2px 7px;
+  border-radius: 999px;
+}
+
+.event-status-text {
+  font-size: 0.72rem;
+  color: #eef5ff;
+  letter-spacing: 0.05em;
+}
+
+.event-credits-pill {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #ffd166;
+}
+
+.hud-skill-toast {
+  background: linear-gradient(90deg, rgba(0, 168, 255, 0.92), rgba(38, 34, 108, 0.92), rgba(228, 30, 38, 0.92));
+  color: #ffffff;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  padding: 4px 14px;
+  border-radius: 999px;
+  box-shadow: 0 0 18px rgba(0, 195, 255, 0.65);
+  animation: skillPulse 0.35s ease-out;
+}
+
+@keyframes skillPulse {
+  0% { transform: scale(0.75); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Clickable Turn Signal Indicators on Cluster */
+#ind-turn-left, #ind-turn-right {
+  cursor: pointer;
+  pointer-events: auto;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+/* M-Boost Nitro Touch Button */
+.nitro-btn {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(0, 210, 255, 0.38), rgba(8, 16, 30, 0.88));
+  border: 2px solid rgba(0, 200, 255, 0.75) !important;
+  box-shadow: 0 0 16px rgba(0, 195, 255, 0.38);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  color: #e8f8ff;
+}
+
+.nitro-btn.pressed, .nitro-btn.boosting {
+  background: radial-gradient(circle at 50% 50%, rgba(0, 225, 255, 0.82), rgba(0, 110, 215, 0.92));
+  box-shadow: 0 0 26px rgba(0, 225, 255, 0.95);
+  transform: scale(0.94);
+}
+
+.nitro-bolt {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.nitro-btn small {
+  font-size: 0.58rem;
+  font-weight: 900;
+  color: #7ee8ff;
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .hud-event-banner {
+    top: 4px;
+    transform: translateX(-50%) scale(0.86);
+  }
+  .nitro-btn {
+    width: 46px;
+    height: 46px;
+  }
+}
