@@ -4,20 +4,22 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { buildProceduralBMW, loadExternalGLBVehicle } from './carBuilder.js';
 
 // ============================================================================
-// 0. UI ELEMENT IDS - synchronized with index.html.
-//    Any id that does not exist is safely skipped without throwing.
+// 0. UI ELEMENT IDS - synchronized with index.html (Phase 1 Foundation Overhaul)
 // ============================================================================
 const UI = {
   loading: 'loading-screen', progress: 'progress-fill', loadingStatus: 'loading-status',
-  glError: 'webgl-error', glErrorMsg: 'webgl-error-msg', reloadGl: 'btn-reload-webgl',
+  loadingAsset: 'loading-asset-item', loadingPct: 'loading-pct',
+  glError: 'webgl-error', glErrorTitle: 'webgl-error-title', glErrorMsg: 'webgl-error-msg',
+  glDiag: 'webgl-diag-box', reloadGl: 'btn-reload-webgl',
   orientOverlay: 'orientation-overlay', dismissPortrait: 'btn-dismiss-portrait',
   menu: 'main-menu', garage: 'garage-screen', settings: 'settings-screen',
-  pauseMenu: 'pause-menu', exitModal: 'exit-modal', hud: 'driving-hud',
+  pauseMenu: 'pause-menu', infoModal: 'info-modal', exitModal: 'exit-modal', hud: 'driving-hud',
   barTop: 'cinematic-bar-top', barBottom: 'cinematic-bar-bottom',
-  // Main Menu buttons
+  // Main Menu buttons (7 items: Play, Garage, Multiplayer, Settings, Controls, Sound, About)
   start: 'btn-start-drive', cont: 'btn-continue-drive', skip: 'btn-skip-intro',
-  openGarage: 'btn-open-garage', openSettings: 'btn-open-settings',
-  openControls: 'btn-open-controls', openSound: 'btn-open-sound',
+  openGarage: 'btn-open-garage', openMultiplayer: 'btn-open-multiplayer',
+  openSettings: 'btn-open-settings', openControls: 'btn-open-controls',
+  openSound: 'btn-open-sound', openAbout: 'btn-open-about',
   menuFps: 'menu-fps-badge', playLabel: 'lbl-play-btn',
   // Garage buttons & labels
   garageHome: 'btn-garage-home', garageBack: 'btn-garage-back', garageSelect: 'btn-garage-select',
@@ -26,6 +28,7 @@ const UI = {
   statBarSpeed: 'stat-bar-speed', statBarAccel: 'stat-bar-accel', statBarHandling: 'stat-bar-handling', statBarBraking: 'stat-bar-braking',
   // Settings controls & labels
   settingsBack: 'btn-settings-back', settingsApply: 'btn-settings-apply',
+  hwTierLabel: 'lbl-hw-tier', toggleAutoRes: 'toggle-auto-res',
   res: 'slider-res', fov: 'slider-fov', steer: 'slider-sens', volume: 'slider-vol',
   engineVol: 'slider-engine-vol', musicVol: 'slider-music-vol', fxVol: 'slider-fx-vol',
   touchScale: 'slider-touch-scale', camSens: 'slider-cam-sens',
@@ -37,6 +40,8 @@ const UI = {
   // Pause Menu buttons
   pauseResume: 'btn-pause-resume', pauseRestart: 'btn-pause-restart',
   pauseGarage: 'btn-pause-garage', pauseSettings: 'btn-pause-settings', pauseMainMenu: 'btn-pause-mainmenu',
+  // Info Modal (Multiplayer Coming Soon & About RR Studios)
+  infoTitle: 'info-modal-title', infoDesc: 'info-modal-desc', infoBadges: 'info-modal-badges', infoClose: 'btn-info-close',
   // Exit Confirmation Modal
   exitTitle: 'exit-modal-title', exitDesc: 'exit-modal-desc',
   exitStay: 'btn-exit-stay', exitConfirm: 'btn-exit-confirm',
@@ -49,17 +54,19 @@ const UI = {
   indLeft: 'ind-turn-left', indRight: 'ind-turn-right', indLights: 'ind-headlights', indBrake: 'ind-handbrake',
   cluster: 'hud-cluster', modePill: 'hud-mode-pill', shiftPill: 'hud-shift-pill',
   zone: 'zone-label', info: 'hud-env-badge', menuInfo: 'menu-env-summary',
-  // Touch buttons
+  // Touch buttons & manual gear paddles
   left: 'touch-left', right: 'touch-right', throttle: 'touch-throttle',
-  brake: 'touch-brake', pbrake: 'touch-handbrake'
+  brake: 'touch-brake', pbrake: 'touch-handbrake',
+  gearUp: 'touch-gear-up', gearDown: 'touch-gear-down'
 };
 
-const STORAGE_KEY = 'bmw_ultimate_drive_settings_v2';
+const STORAGE_KEY = 'rr_studios_bmw_phase1_settings';
 const BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL)
   ? import.meta.env.BASE_URL
   : './';
 const ASSET = (p) => `${BASE_URL}assets/${p.replace(/^\/?assets\//, '')}`;
 const ASSET_FALLBACK = (p) => `${BASE_URL}public/assets/${p.replace(/^\/?assets\//, '')}`;
+
 const PHYS_STEP = 1 / 60;
 const LANE_TILE_M = 60;
 const CAMERA_NAMES = ['CHASE', 'CLOSE', 'FRONT', 'SIDE', 'COCKPIT'];
@@ -97,7 +104,7 @@ const _vSmokePos = new THREE.Vector3();
 const _vSmokeVel = new THREE.Vector3();
 
 // ============================================================================
-// 1. AUDIO SYNTHESIS ENGINE (4-Channel Procedural Web Audio API)
+// 1. AUDIO SYNTHESIS ENGINE (Part 9: Engine + UI Clicks + Gear Pops + Ambience)
 // ============================================================================
 class AutomotiveAudioEngine {
   constructor() {
@@ -161,7 +168,7 @@ class AutomotiveAudioEngine {
       this.turboGain.connect(this.masterGain);
       this.turboOsc.start();
 
-      // Ambient synth pad for Music Volume channel (warm showroom/cruise chord)
+      // Ambient synth pad for Environment / Music Volume channel
       this.musicGain = ctx.createGain();
       this.musicGain.gain.value = 0;
       this.musicFilter = ctx.createBiquadFilter();
@@ -212,6 +219,26 @@ class AutomotiveAudioEngine {
     }
   }
 
+  // Synthesizes a crisp automotive iDrive UI button click/confirm tone
+  playUIClick(accent = false) {
+    this.init();
+    if (!this.initialized || !this.enabled || !this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(accent ? 880 : 620, now);
+      osc.frequency.exponentialRampToValueAtTime(accent ? 1320 : 340, now + 0.045);
+      gain.gain.setValueAtTime(0.18 * this.fxVolume, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + 0.055);
+    } catch (_) { /* ignore */ }
+  }
+
   popBurst(now) {
     if (!this.pop) return;
     const g = this.pop.g.gain;
@@ -225,7 +252,7 @@ class AutomotiveAudioEngine {
     if (!this.initialized || !this.enabled || !this.ctx) return;
     const now = this.ctx.currentTime;
     this.shiftUntil = now + 0.14;
-    if (this.sportExhaust && up && throttle > 0.4) this.popBurst(now);
+    if (this.sportExhaust && (up || throttle > 0.3)) this.popBurst(now);
   }
 
   suspend() {
@@ -246,12 +273,10 @@ class AutomotiveAudioEngine {
     }
     this.masterGain.gain.setTargetAtTime(this.masterVolume * 0.28, now, 0.05);
 
-    // Ambient synth music level
     const musicTarget = this.musicVolume * (inMenu ? 0.35 : 0.16);
     this.musicGain.gain.setTargetAtTime(musicTarget, now, 0.15);
 
     if (inMenu) {
-      // Quiet idle purr in Main Menu / Garage / Pause
       this.osc1.frequency.setTargetAtTime(34, now, 0.08);
       this.osc2.frequency.setTargetAtTime(17, now, 0.08);
       this.osc3.frequency.setTargetAtTime(68, now, 0.08);
@@ -404,7 +429,7 @@ function createSmokeTexture() {
 }
 
 // ============================================================================
-// 3. ENVIRONMENT & GRAPHICS PRESETS
+// 3. ENVIRONMENT & UNIFIED REALISTIC GRAPHICS ENGINE (Part 4)
 // ============================================================================
 const TIME_PRESETS = {
   morning: { sky: 0x9fc3dd, sun: 0xfff0d8, sunI: 2.8, sunPos: [-90, 90, 70], hemi: 0.9, exp: 1.0, win: 0.0, env: 1.0, fog: 0.00055, label: 'MORNING', menu: 'MORNING', clock: '08:15', tempC: 19 },
@@ -430,13 +455,15 @@ const SKY = {
   night:   { top: 0x01030a, hor: 0x0a1322, glow: 0.25, mix: 0.0, tint: [0.1, 0.12, 0.2] }
 };
 
-const PRESETS = {
-  low:    { dpr: 1.25, res: 0.85, shadow: false, map: 512,  every: 0, spots: false,   tail: false, trees: 0.35, traffic: 6,  rain: 0.4, glass: false, coat: false, bump: false, desc: 'Max FPS Mobile Optimization' },
-  medium: { dpr: 1.5,  res: 1.0,  shadow: true,  map: 1024, every: 2, spots: 'night', tail: false, trees: 0.70, traffic: 10, rain: 0.7, glass: false, coat: true,  bump: false, desc: 'Balanced PBR + Soft Shadows' },
-  high:   { dpr: 2.0,  res: 1.0,  shadow: true,  map: 2048, every: 1, spots: true,    tail: true,  trees: 1.0,  traffic: 14, rain: 1.0, glass: false, coat: true,  bump: true,  desc: 'PBR Clearcoat + Dynamic Shadows' },
-  ultra:  { dpr: 2.75, res: 1.15, shadow: true,  map: 2048, every: 1, spots: true,    tail: true,  trees: 1.0,  traffic: 16, rain: 1.0, glass: true,  coat: true,  bump: true,  desc: 'Ultra Glass Transmission + Max Detail' }
+// Part 4: Hardware Tier Profiles inside the single unified "REALISTIC" graphics option.
+// Automatically selected at boot from device memory, CPU cores, and GPU capabilities,
+// and dynamically adjusted at runtime to maintain smooth Android gameplay.
+const REALISTIC_TIERS = {
+  0: { name: 'REALISTIC // MOBILE BALANCED', dpr: 1.35, res: 0.9,  shadow: true, map: 1024, every: 2, spots: 'night', tail: false, trees: 0.65, traffic: 10, rain: 0.6, glass: false, coat: true, bump: false, far: 2400 },
+  1: { name: 'REALISTIC // HIGH PBR',        dpr: 1.85, res: 1.0,  shadow: true, map: 1536, every: 1, spots: true,    tail: true,  trees: 0.90, traffic: 14, rain: 0.85, glass: false, coat: true, bump: true,  far: 3000 },
+  2: { name: 'REALISTIC // ULTRA MAX',       dpr: 2.50, res: 1.05, shadow: true, map: 2048, every: 1, spots: true,    tail: true,  trees: 1.00, traffic: 16, rain: 1.00, glass: true,  coat: true, bump: true,  far: 3600 }
 };
-const PRESET_ORDER = ['low', 'medium', 'high', 'ultra'];
+
 const ENV_NUM = ['sunI', 'sunPow', 'hemi', 'exp', 'win', 'envI', 'fog', 'rough', 'metal', 'skyMix'];
 const cloneEnv = (e) => ({
   top: e.top.clone(), hor: e.hor.clone(), sun: e.sun.clone(), sunPos: e.sunPos.clone(), tint: e.tint.clone(),
@@ -453,13 +480,17 @@ class UltimateDriveSimulator {
     this.minimapCanvas = $('minimap-canvas');
     this.minimapCtx = this.minimapCanvas ? this.minimapCanvas.getContext('2d') : null;
 
+    // Detect initial hardware tier for the unified REALISTIC graphics engine
+    this.hwTier = this.detectInitialHardwareTier();
+
     this.state = {
       mode: 'MENU',        // 'MENU' | 'INTRO' | 'DRIVING' | 'PAUSED'
       screen: 'MAIN_MENU', // 'MAIN_MENU' | 'GARAGE' | 'SETTINGS' | 'DRIVING' | 'PAUSE'
       timeOfDay: 'sunset',
       weather: 'clear',
-      preset: IS_MOBILE ? 'medium' : 'high',
+      preset: 'realistic', // Single unified REALISTIC graphics option
       resScale: 1.0,
+      autoQuality: true,
       shadowsEnabled: true,
       aaEnabled: true,
       postFxEnabled: true,
@@ -468,9 +499,10 @@ class UltimateDriveSimulator {
       steerSens: 1.0,
       touchScale: 1.0,
       controlLayout: 'standard',
+      transMode: 'auto',   // 'auto' | 'manual'
       units: 'kmh',
       assistMode: 'sim',
-      cameraIndex: 0, // 0: Chase, 1: Close, 2: Front, 3: Side, 4: Cockpit
+      cameraIndex: 0,      // 0: Chase, 1: Close, 2: Front, 3: Side, 4: Cockpit
       headlightsOn: true,
       introTimer: 0,
       started: false,
@@ -481,10 +513,9 @@ class UltimateDriveSimulator {
       portraitDismissed: false
     };
 
-    // Controlled In-Game Navigation Stack for Android Hardware Back & ESC
     this.navStack = ['MAIN_MENU'];
     this.suppressPop = false;
-    this.exitModalContext = 'APP'; // 'APP' or 'TO_MAIN_MENU'
+    this.exitModalContext = 'APP';
     this.pendingPaintHex = this.state.paintHex;
     this.pendingPaintName = this.state.paintName;
 
@@ -520,6 +551,7 @@ class UltimateDriveSimulator {
     this.fpsTime = 0;
     this.fps = 60;
     this.throttleVal = 0;
+    this.brakeVal = 0;
     this.longAccel = 0;
     this.orbitAngle = 0.55;
     this.garageDragActive = false;
@@ -528,7 +560,6 @@ class UltimateDriveSimulator {
     this.frame = 0;
     this.hudAcc = 0;
     this.dynScale = 1;
-    this.autoQuality = true;
     this.adaptT = 0;
     this.goodT = 0;
     this.prevGear = 1;
@@ -562,17 +593,49 @@ class UltimateDriveSimulator {
     this.bindUIAndControls();
     this.initHistoryNavigation();
     this.applyEnvironmentState(true);
-    this.applyGraphicsPreset(this.state.preset, true);
+    this.applyRealisticTier(this.hwTier, true);
     this.syncSettingsUIFromState();
     this.refreshEnvMap();
 
     this.teleportToZone(this.state.spawn);
     this.loadAssets();
 
-    this.showScreen('MAIN_MENU', false);
+    this.showScreen('MAIN_MENU');
     this.checkOrientation();
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
+  }
+
+  detectInitialHardwareTier() {
+    const cores = navigator.hardwareConcurrency || 4;
+    const mem = navigator.deviceMemory || 4;
+    if (!IS_MOBILE && cores >= 8 && mem >= 8) return 2;
+    if (IS_MOBILE && (cores <= 4 || mem <= 3)) return 0;
+    return 1;
+  }
+
+  // --------------------------------------------------------------------------
+  // PART 1: AUTOMATIC IMMERSIVE FULLSCREEN & LANDSCAPE LOCK ON PLAY
+  // --------------------------------------------------------------------------
+  requestImmersiveFullscreen() {
+    const docEl = document.documentElement;
+    const reqFs = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
+    if (reqFs && !document.fullscreenElement && !document.webkitFullscreenElement) {
+      Promise.resolve(reqFs.call(docEl))
+        .then(() => {
+          if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(() => {});
+          }
+          const fsToggle = $(UI.toggleFullscreen);
+          if (fsToggle) fsToggle.checked = true;
+          this.updateViewportSize();
+        })
+        .catch(() => {
+          // Gracefully continue if browser blocks or does not support Fullscreen API
+        });
+    } else if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('landscape').catch(() => {});
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -583,8 +646,8 @@ class UltimateDriveSimulator {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
       const d = JSON.parse(raw);
-      if (d.preset && PRESETS[d.preset]) this.state.preset = d.preset;
-      if (typeof d.resScale === 'number') this.state.resScale = THREE.MathUtils.clamp(d.resScale, 0.5, 1.25);
+      if (typeof d.resScale === 'number') this.state.resScale = THREE.MathUtils.clamp(d.resScale, 0.6, 1.25);
+      if (typeof d.autoQuality === 'boolean') this.state.autoQuality = d.autoQuality;
       if (typeof d.shadowsEnabled === 'boolean') this.state.shadowsEnabled = d.shadowsEnabled;
       if (typeof d.aaEnabled === 'boolean') this.state.aaEnabled = d.aaEnabled;
       if (typeof d.postFxEnabled === 'boolean') this.state.postFxEnabled = d.postFxEnabled;
@@ -593,6 +656,7 @@ class UltimateDriveSimulator {
       if (typeof d.steerSens === 'number') this.state.steerSens = THREE.MathUtils.clamp(d.steerSens, 0.5, 1.8);
       if (typeof d.touchScale === 'number') this.state.touchScale = THREE.MathUtils.clamp(d.touchScale, 0.85, 1.25);
       if (d.controlLayout === 'flipped' || d.controlLayout === 'standard') this.state.controlLayout = d.controlLayout;
+      if (d.transMode === 'manual' || d.transMode === 'auto') this.state.transMode = d.transMode;
       if (d.units === 'mph' || d.units === 'kmh') this.state.units = d.units;
       if (d.assistMode === 'arcade' || d.assistMode === 'sim') this.state.assistMode = d.assistMode;
       if (d.timeOfDay && TIME_PRESETS[d.timeOfDay]) this.state.timeOfDay = d.timeOfDay;
@@ -620,8 +684,8 @@ class UltimateDriveSimulator {
   saveSettings() {
     try {
       const payload = {
-        preset: this.state.preset,
         resScale: this.state.resScale,
+        autoQuality: this.state.autoQuality,
         shadowsEnabled: this.state.shadowsEnabled,
         aaEnabled: this.state.aaEnabled,
         postFxEnabled: this.state.postFxEnabled,
@@ -630,6 +694,7 @@ class UltimateDriveSimulator {
         steerSens: this.state.steerSens,
         touchScale: this.state.touchScale,
         controlLayout: this.state.controlLayout,
+        transMode: this.state.transMode,
         units: this.state.units,
         assistMode: this.state.assistMode,
         timeOfDay: this.state.timeOfDay,
@@ -645,28 +710,25 @@ class UltimateDriveSimulator {
         sportExhaust: this.audio.sportExhaust
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch (e) {
-      /* ignore storage quota or iframe restrictions */
-    }
+    } catch (_) { /* ignore */ }
   }
 
   // --------------------------------------------------------------------------
-  // PART 6: CONTROLLED NAVIGATION STACK & ANDROID HARDWARE BACK HANDLER
+  // PART 6: CONTROLLED NAVIGATION STACK & ANDROID BACK BUTTON SYSTEM
   // --------------------------------------------------------------------------
   initHistoryNavigation() {
     try {
-      window.history.replaceState({ bmwNav: 'ROOT' }, '', window.location.href);
-      window.history.pushState({ bmwNav: 'MAIN_MENU' }, '', window.location.href);
-    } catch (_) { /* ignore sandboxed history restrictions */ }
+      window.history.replaceState({ rrStudioNav: 'ROOT' }, '', window.location.href);
+      window.history.pushState({ rrStudioNav: 'MAIN_MENU' }, '', window.location.href);
+    } catch (_) { /* ignore */ }
 
     this._onPopState = () => {
       if (this.suppressPop) {
         this.suppressPop = false;
         return;
       }
-      // Keep the history guard entry active so Android Back stays inside the game
       try {
-        window.history.pushState({ bmwNav: this.state.screen }, '', window.location.href);
+        window.history.pushState({ rrStudioNav: this.state.screen }, '', window.location.href);
       } catch (_) { /* ignore */ }
       this.handleBackAction();
     };
@@ -678,21 +740,27 @@ class UltimateDriveSimulator {
     if (this.navStack[this.navStack.length - 1] !== screen) {
       this.navStack.push(screen);
       try {
-        window.history.pushState({ bmwNav: screen }, '', window.location.href);
+        window.history.replaceState({ rrStudioNav: screen }, '', window.location.href);
       } catch (_) { /* ignore */ }
     }
     this.showScreen(screen);
   }
 
   handleBackAction() {
-    // 1. If Exit Confirmation modal is open, Back closes the modal ("Stay")
+    this.audio.playUIClick(false);
+
+    const infoEl = $(UI.infoModal);
+    if (infoEl && !infoEl.classList.contains('hidden')) {
+      show(UI.infoModal, false);
+      return;
+    }
+
     const exitEl = $(UI.exitModal);
     if (exitEl && !exitEl.classList.contains('hidden')) {
       this.closeExitModal();
       return;
     }
 
-    // 2. If Cinematic Intro is playing, skip straight to driving
     if (this.state.mode === 'INTRO') {
       this.endIntro();
       return;
@@ -700,33 +768,28 @@ class UltimateDriveSimulator {
 
     const cur = this.state.screen;
 
-    // 3. WHILE DRIVING -> pause the game and show the custom Pause Menu
     if (cur === 'DRIVING') {
       this.pauseDriving();
       return;
     }
 
-    // 4. INSIDE PAUSE MENU -> Resume driving
     if (cur === 'PAUSE') {
       this.resumeDriving();
       return;
     }
 
-    // 5. INSIDE GARAGE -> revert unconfirmed paint preview and return to previous screen
     if (cur === 'GARAGE') {
       this.setPaint(this.state.paintHex, this.state.paintName, false);
       this.popToPreviousScreen();
       return;
     }
 
-    // 6. INSIDE SETTINGS -> save settings and return to previous screen
     if (cur === 'SETTINGS') {
       this.saveSettings();
       this.popToPreviousScreen();
       return;
     }
 
-    // 7. INSIDE MAIN MENU -> show custom Exit Confirmation overlay
     if (cur === 'MAIN_MENU') {
       this.openExitModal('APP');
     }
@@ -768,14 +831,44 @@ class UltimateDriveSimulator {
     }
   }
 
+  openInfoModal(type) {
+    this.audio.playUIClick(true);
+    if (type === 'MULTIPLAYER') {
+      setText(UI.infoTitle, 'ONLINE MULTIPLAYER // COMING SOON');
+      setText(UI.infoDesc, 'Real-time lobbies, live tandem drift sessions, and leaderboard time trials are scheduled for RR STUDIOS Phase 2. Enjoy single-player Open World Realistic Drive in Phase 1!');
+      const b = $(UI.infoBadges);
+      if (b) {
+        b.innerHTML = `
+          <div><span>STATUS</span><strong>In Development (Phase 2)</strong></div>
+          <div><span>MODE</span><strong>Open World Freeroam &amp; Drift</strong></div>
+          <div><span>CAPACITY</span><strong>Up to 8 Players / Lobby</strong></div>
+          <div><span>CURRENT BUILD</span><strong>Single-Player Active</strong></div>
+        `;
+      }
+    } else {
+      setText(UI.infoTitle, 'ABOUT RR STUDIOS');
+      setText(UI.infoDesc, 'RR STUDIOS builds high-craft mobile & web automotive simulations engineered for Android landscape performance, physically based materials, and responsive touch dynamics.');
+      const b = $(UI.infoBadges);
+      if (b) {
+        b.innerHTML = `
+          <div><span>STUDIO</span><strong>RR STUDIOS</strong></div>
+          <div><span>VERSION</span><strong>Phase 1 Foundation (v2.5)</strong></div>
+          <div><span>RENDERER</span><strong>Three.js r180 PBR Pipeline</strong></div>
+          <div><span>VEHICLE</span><strong>M4 Competition Inspired Coupe</strong></div>
+        `;
+      }
+    }
+    show(UI.infoModal, true);
+  }
+
   openExitModal(context = 'APP') {
     this.exitModalContext = context;
     if (context === 'TO_MAIN_MENU') {
-      setText(UI.exitTitle, 'EXIT TO MAIN MENU?');
-      setText(UI.exitDesc, 'Are you sure you want to leave your current drive and return to the main menu?');
+      setText(UI.exitTitle, 'RETURN TO MAIN MENU?');
+      setText(UI.exitDesc, 'Are you sure you want to leave your current driving session and return to the RR STUDIOS Main Menu?');
     } else {
-      setText(UI.exitTitle, 'EXIT GAME?');
-      setText(UI.exitDesc, 'Are you sure you want to exit BMW PROJECT: Ultimate Realistic Drive?');
+      setText(UI.exitTitle, 'EXIT RR STUDIOS?');
+      setText(UI.exitDesc, 'Are you sure you want to exit BMW Ultimate Realistic Drive?');
     }
     show(UI.exitModal, true);
   }
@@ -785,33 +878,67 @@ class UltimateDriveSimulator {
   }
 
   // --------------------------------------------------------------------------
-  // RENDERER / SCENE
+  // PART 8: WEBGL 2 & GRAPHICS STABILITY (Multi-Stage Fallback + Diagnostics)
   // --------------------------------------------------------------------------
   initWebGL() {
-    try {
-      this.renderer = new THREE.WebGLRenderer({
-        canvas: this.canvas,
-        antialias: true,
-        powerPreference: 'high-performance'
-      });
-    } catch (err) {
-      show(UI.glError, true);
-      show(UI.loading, false);
-      throw err;
+    const attempts = [
+      { label: 'WebGL 2 High-Performance AA', opts: { canvas: this.canvas, antialias: true, powerPreference: 'high-performance', alpha: false } },
+      { label: 'WebGL 2 Balanced No-AA', opts: { canvas: this.canvas, antialias: false, powerPreference: 'default', alpha: false } },
+      { label: 'WebGL Standard Fallback', opts: { canvas: this.canvas, antialias: false, alpha: false, failIfMajorPerformanceCaveat: false } }
+    ];
+
+    let lastErr = null;
+    for (const att of attempts) {
+      try {
+        this.renderer = new THREE.WebGLRenderer(att.opts);
+        this.glProfileLabel = att.label;
+        break;
+      } catch (err) {
+        lastErr = err;
+      }
     }
 
+    if (!this.renderer) {
+      const hasWGL2 = !!window.WebGL2RenderingContext;
+      const hasWGL1 = !!window.WebGLRenderingContext;
+      setText(UI.glErrorTitle, '3D Hardware Acceleration Unavailable');
+      setText(
+        UI.glErrorMsg,
+        'Your browser or device could not create a WebGL rendering context. Ensure Hardware Acceleration is enabled in browser settings and no other heavy 3D tabs are exhausting GPU memory.'
+      );
+      setText(
+        UI.glDiag,
+        `WebGL2 API: ${hasWGL2 ? 'Present' : 'Missing'} | WebGL1 API: ${hasWGL1 ? 'Present' : 'Missing'}\nDetails: ${lastErr && lastErr.message ? lastErr.message : String(lastErr)}`
+      );
+      show(UI.glError, true);
+      show(UI.loading, false);
+      throw lastErr || new Error('Unable to create WebGLRenderer');
+    }
+
+    const isWebGL2 = this.renderer.capabilities.isWebGL2;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = isWebGL2 ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
     this.renderer.shadowMap.autoUpdate = false;
     this.renderer.shadowMap.needsUpdate = true;
 
     this.canvas.addEventListener('webglcontextlost', (e) => {
       e.preventDefault();
-      setText(UI.glErrorMsg, 'WebGL graphics context was lost. Tap Reload to restore.');
+      this.contextLost = true;
+      if (this.state.screen === 'DRIVING') this.pauseDriving();
+      setText(UI.glErrorTitle, 'Graphics Context Paused');
+      setText(UI.glErrorMsg, 'Android reclaimed GPU memory in the background. Waiting to restore 3D context automatically, or tap Retry below.');
+      setText(UI.glDiag, `Profile: ${this.glProfileLabel} | Tier: ${this.hwTier}`);
       show(UI.glError, true);
+    });
+
+    this.canvas.addEventListener('webglcontextrestored', () => {
+      this.contextLost = false;
+      show(UI.glError, false);
+      this.refreshEnvMap();
+      this.renderer.shadowMap.needsUpdate = true;
     });
 
     this.scene = new THREE.Scene();
@@ -822,7 +949,7 @@ class UltimateDriveSimulator {
       this.state.fov,
       window.innerWidth / window.innerHeight,
       0.18,
-      3600
+      3200
     );
 
     const pmremGenerator = (this.pmrem = new THREE.PMREMGenerator(this.renderer));
@@ -857,19 +984,26 @@ class UltimateDriveSimulator {
         this.checkOrientation();
       });
     }
+    document.addEventListener('fullscreenchange', () => {
+      const fsToggle = $(UI.toggleFullscreen);
+      if (fsToggle) fsToggle.checked = !!document.fullscreenElement;
+      this.updateViewportSize();
+      this.checkOrientation();
+    });
     this.updateViewportSize();
   }
 
   updateViewportSize() {
+    if (!this.renderer || !this.camera) return;
     const vv = window.visualViewport;
     const w = Math.max(1, Math.round(vv ? vv.width : window.innerWidth));
     const h = Math.max(1, Math.round(vv ? vv.height : window.innerHeight));
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-    const cap = this.cfg ? this.cfg.dpr : 1.5;
+    const cap = this.cfg ? this.cfg.dpr : 1.65;
     const aaBoost = this.state.aaEnabled ? 1.0 : 0.78;
     const dpr = Math.min(window.devicePixelRatio || 1, cap) * this.state.resScale * this.dynScale * aaBoost;
-    this.renderer.setPixelRatio(Math.max(0.5, dpr));
+    this.renderer.setPixelRatio(Math.max(0.55, dpr));
     this.renderer.setSize(w, h, false);
   }
 
@@ -1401,7 +1535,7 @@ class UltimateDriveSimulator {
   }
 
   // --------------------------------------------------------------------------
-  // ENVIRONMENT / GRAPHICS STATE
+  // PART 4: REALISTIC GRAPHICS — SINGLE UNIFIED ADAPTIVE ENGINE
   // --------------------------------------------------------------------------
   applyEnvironmentState(snap = false) {
     const T = TIME_PRESETS[this.state.timeOfDay] || TIME_PRESETS.sunset;
@@ -1446,7 +1580,7 @@ class UltimateDriveSimulator {
     const T = TIME_PRESETS[this.state.timeOfDay] || TIME_PRESETS.sunset;
     const W = WEATHER_PRESETS[this.state.weather] || WEATHER_PRESETS.clear;
     setText(UI.info, `${T.label} | ${W.label}`);
-    setText(UI.menuInfo, `${T.menu} | ${W.label} | ${this.state.preset.toUpperCase()} PRESET`);
+    setText(UI.menuInfo, `${T.menu} | ${W.label} | REALISTIC GRAPHICS`);
     setText(UI.clockTime, T.clock);
     setText(UI.weatherTemp, `${T.tempC + W.tempDelta}°C`);
   }
@@ -1455,18 +1589,21 @@ class UltimateDriveSimulator {
     document.querySelectorAll(selector).forEach((b) => b.classList.toggle('active', b.dataset[attr] === value));
   }
 
-  applyGraphicsPreset(preset, keepCustomRes = false) {
-    const CFG = PRESETS[preset] || PRESETS.high;
-    preset = PRESETS[preset] ? preset : 'high';
+  applyRealisticTier(tierIndex, keepCustomRes = false) {
+    const clampedTier = THREE.MathUtils.clamp(tierIndex, 0, 2);
+    this.hwTier = clampedTier;
+    const CFG = REALISTIC_TIERS[clampedTier];
     this.cfg = CFG;
-    this.state.preset = preset;
+    this.state.preset = 'realistic';
+
     if (!keepCustomRes) {
       this.state.resScale = CFG.res;
-      this.state.shadowsEnabled = CFG.shadow;
     }
-    this.dynScale = 1;
-    this.adaptT = 0;
-    this.goodT = 0;
+
+    if (this.camera && this.camera.far !== CFG.far) {
+      this.camera.far = CFG.far;
+      this.camera.updateProjectionMatrix();
+    }
 
     this.carRig.root.traverse((o) => {
       const m = o.isMesh ? o.material : null;
@@ -1496,28 +1633,26 @@ class UltimateDriveSimulator {
     this.applyRainRange();
 
     this.updateViewportSize();
-    setText(UI.gfxShort, preset.toUpperCase());
+    setText(UI.gfxShort, 'REALISTIC');
+    setText(UI.hwTierLabel, `${CFG.name} (${Math.round(this.dynScale * 100)}% SCALE)`);
     setText(UI.resLabel, `${Math.round(this.state.resScale * 100)}%`);
-    setText(UI.previewPresetTitle, `${preset.toUpperCase()} PRESET`);
-    setText(UI.previewEnvSub, CFG.desc);
+    setText(UI.previewPresetTitle, 'REALISTIC GRAPHICS');
+    setText(UI.previewEnvSub, CFG.name);
     const sl = $(UI.res);
     if (sl) sl.value = String(this.state.resScale);
-    const shToggle = $(UI.toggleShadows);
-    if (shToggle) shToggle.checked = useShadows;
-    this.syncChips('#preset-select .chip-btn', 'preset', preset);
     if (this.blob) this.blob.material.opacity = useShadows && CFG.every === 1 ? 0.32 : 0.55;
     this.applyBump();
     this.updateSummary();
   }
 
   syncSettingsUIFromState() {
-    this.syncChips('#preset-select .chip-btn', 'preset', this.state.preset);
     this.syncChips('#time-select .chip-btn', 'time', this.state.timeOfDay);
     this.syncChips('#weather-select .chip-btn', 'weather', this.state.weather);
     this.syncChips('#spawn-select .chip-btn', 'spawn', this.state.spawn);
     this.syncChips('#assist-select .chip-btn', 'assist', this.state.assistMode);
     this.syncChips('#units-select .chip-btn', 'units', this.state.units);
     this.syncChips('#layout-select .chip-btn', 'layout', this.state.controlLayout);
+    this.syncChips('#trans-select .chip-btn', 'trans', this.state.transMode);
     this.syncChips('#audio-toggle-group .chip-btn', 'audio', this.audio.enabled ? 'on' : 'off');
     this.syncChips('#exhaust-select .chip-btn', 'exhaust', this.audio.sportExhaust ? 'sport' : 'comfort');
 
@@ -1541,6 +1676,7 @@ class UltimateDriveSimulator {
     setText(UI.speedUnit, this.state.units === 'mph' ? 'MPH' : 'KM/H');
     setText(UI.modePill, this.state.assistMode === 'sim' ? 'M-DYNAMIC' : 'STABLE');
 
+    const ar = $(UI.toggleAutoRes); if (ar) ar.checked = this.state.autoQuality;
     const sh = $(UI.toggleShadows); if (sh) sh.checked = this.state.shadowsEnabled;
     const aa = $(UI.toggleAA); if (aa) aa.checked = this.state.aaEnabled;
     const pf = $(UI.togglePostFx); if (pf) pf.checked = this.state.postFxEnabled;
@@ -1662,7 +1798,8 @@ class UltimateDriveSimulator {
   // UI + NAVIGATION FLOWS
   // --------------------------------------------------------------------------
   startGame(skipIntro = false) {
-    this.audio.init();
+    this.audio.playUIClick(true);
+    this.requestImmersiveFullscreen();
     this.state.started = true;
     this.state.introTimer = 0;
     show(UI.cont, true);
@@ -1684,7 +1821,7 @@ class UltimateDriveSimulator {
     show(UI.barTop, false);
     show(UI.barBottom, false);
     this.navStack = ['MAIN_MENU', 'DRIVING'];
-    try { window.history.pushState({ bmwNav: 'DRIVING' }, '', window.location.href); } catch (_) { /* ignore */ }
+    try { window.history.replaceState({ rrStudioNav: 'DRIVING' }, '', window.location.href); } catch (_) { /* ignore */ }
     this.showScreen('DRIVING');
   }
 
@@ -1694,17 +1831,19 @@ class UltimateDriveSimulator {
   }
 
   resumeDriving() {
-    this.audio.init();
+    this.audio.playUIClick(true);
     this.navStack = ['MAIN_MENU', 'DRIVING'];
     this.showScreen('DRIVING');
   }
 
   restartDrivingSession() {
+    this.audio.playUIClick(true);
     this.teleportToZone(this.state.spawn);
     this.resumeDriving();
   }
 
   openSettingsWithTab(panelId) {
+    this.audio.playUIClick(false);
     const tabs = document.querySelectorAll('.settings-tab-btn');
     tabs.forEach((o) => o.classList.toggle('active', o.dataset.panel === panelId));
     document.querySelectorAll('#settings-screen .menu-panel').forEach((p) => {
@@ -1722,8 +1861,26 @@ class UltimateDriveSimulator {
   }
 
   cycleCamera() {
+    this.audio.playUIClick(false);
     this.state.cameraIndex = (this.state.cameraIndex + 1) % CAMERA_NAMES.length;
     setText(UI.camLabel, CAMERA_NAMES[this.state.cameraIndex]);
+  }
+
+  shiftGearManual(delta) {
+    this.state.transMode = 'manual';
+    this.syncChips('#trans-select .chip-btn', 'trans', 'manual');
+    const p = this.physics;
+    const nextGear = THREE.MathUtils.clamp(p.gear + delta, 1, 6);
+    if (nextGear !== p.gear) {
+      const up = nextGear > p.gear;
+      p.gear = nextGear;
+      this.prevGear = nextGear;
+      this.audio.shift(up, this.throttleVal);
+      p.rpm = THREE.MathUtils.clamp(up ? p.rpm - 1350 : p.rpm + 1150, 950, 7200);
+      this.pulseGear();
+    } else {
+      this.audio.playUIClick(false);
+    }
   }
 
   setAudioEnabled(v) {
@@ -1738,6 +1895,7 @@ class UltimateDriveSimulator {
   bindChips(selector, attr, fn) {
     document.querySelectorAll(selector).forEach((btn) => {
       btn.addEventListener('click', () => {
+        this.audio.playUIClick(false);
         btn.parentElement.querySelectorAll('.chip-btn, .garage-swatch-btn').forEach((b) => b.classList.toggle('active', b === btn));
         fn(btn.dataset[attr], btn);
       });
@@ -1752,10 +1910,10 @@ class UltimateDriveSimulator {
       }, 220);
     });
     window.addEventListener('pagehide', () => this.dispose());
-    this.canvas.addEventListener('webglcontextrestored', () => show(UI.glError, false));
 
     on(UI.reloadGl, 'click', () => window.location.reload());
     on(UI.dismissPortrait, 'click', () => {
+      this.audio.playUIClick(false);
       this.state.portraitDismissed = true;
       this.checkOrientation();
     });
@@ -1765,40 +1923,52 @@ class UltimateDriveSimulator {
     });
     try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => {}); } catch (_) { /* ignore */ }
 
-    // Settings category tabs
     const tabs = document.querySelectorAll('.settings-tab-btn');
     tabs.forEach((t) => t.addEventListener('click', () => {
+      this.audio.playUIClick(false);
       tabs.forEach((o) => o.classList.toggle('active', o === t));
       document.querySelectorAll('#settings-screen .menu-panel').forEach((p) => p.classList.toggle('hidden', p.id !== t.dataset.panel));
     }));
 
-    // Main Menu navigation buttons
     on(UI.start, 'click', () => {
       if (!this.state.started) {
         this.teleportToZone(this.state.spawn);
         this.startGame(false);
       } else {
+        this.requestImmersiveFullscreen();
         this.resumeDriving();
       }
     });
-    on(UI.cont, 'click', () => this.resumeDriving());
+    on(UI.cont, 'click', () => {
+      this.requestImmersiveFullscreen();
+      this.resumeDriving();
+    });
     on(UI.skip, 'click', () => { if (this.state.mode === 'INTRO') this.endIntro(); });
-    on(UI.openGarage, 'click', () => this.navigateTo('GARAGE'));
+    on(UI.openGarage, 'click', () => { this.audio.playUIClick(false); this.navigateTo('GARAGE'); });
+    on(UI.openMultiplayer, 'click', () => this.openInfoModal('MULTIPLAYER'));
     on(UI.openSettings, 'click', () => this.openSettingsWithTab('panel-graphics'));
     on(UI.openControls, 'click', () => this.openSettingsWithTab('panel-controls'));
     on(UI.openSound, 'click', () => this.openSettingsWithTab('panel-audio'));
+    on(UI.openAbout, 'click', () => this.openInfoModal('ABOUT'));
 
-    // Garage screen buttons + interactive orbit drag on the 3D canvas
+    on(UI.infoClose, 'click', () => {
+      this.audio.playUIClick(false);
+      show(UI.infoModal, false);
+    });
+
     on(UI.garageHome, 'click', () => {
+      this.audio.playUIClick(false);
       this.setPaint(this.state.paintHex, this.state.paintName, false);
       this.navStack = ['MAIN_MENU'];
       this.showScreen('MAIN_MENU');
     });
     on(UI.garageBack, 'click', () => {
+      this.audio.playUIClick(false);
       this.setPaint(this.state.paintHex, this.state.paintName, false);
       this.popToPreviousScreen();
     });
     on(UI.garageSelect, 'click', () => {
+      this.audio.playUIClick(true);
       this.setPaint(this.pendingPaintHex, this.pendingPaintName, true);
       this.popToPreviousScreen();
     });
@@ -1818,62 +1988,69 @@ class UltimateDriveSimulator {
     });
     window.addEventListener('pointerup', () => { this.garageDragActive = false; });
 
-    // Settings screen Back & Apply
     on(UI.settingsBack, 'click', () => {
+      this.audio.playUIClick(false);
       this.saveSettings();
       this.popToPreviousScreen();
     });
     on(UI.settingsApply, 'click', () => {
+      this.audio.playUIClick(true);
       this.saveSettings();
       this.popToPreviousScreen();
     });
 
-    // Pause Menu buttons
     on(UI.pauseResume, 'click', () => this.resumeDriving());
     on(UI.pauseRestart, 'click', () => this.restartDrivingSession());
-    on(UI.pauseGarage, 'click', () => this.navigateTo('GARAGE'));
+    on(UI.pauseGarage, 'click', () => { this.audio.playUIClick(false); this.navigateTo('GARAGE'); });
     on(UI.pauseSettings, 'click', () => this.openSettingsWithTab('panel-graphics'));
-    on(UI.pauseMainMenu, 'click', () => this.openExitModal('TO_MAIN_MENU'));
+    on(UI.pauseMainMenu, 'click', () => { this.audio.playUIClick(false); this.openExitModal('TO_MAIN_MENU'); });
 
-    // Exit Confirmation Modal buttons
-    on(UI.exitStay, 'click', () => this.closeExitModal());
+    on(UI.exitStay, 'click', () => { this.audio.playUIClick(false); this.closeExitModal(); });
     on(UI.exitConfirm, 'click', () => {
+      this.audio.playUIClick(true);
       this.closeExitModal();
       if (this.exitModalContext === 'TO_MAIN_MENU') {
         this.navStack = ['MAIN_MENU'];
         this.showScreen('MAIN_MENU');
       } else {
-        // Safe in-game exit action: reset session to Main Menu idle showcase without window.close()
         this.teleportToZone(this.state.spawn);
         this.navStack = ['MAIN_MENU'];
         this.showScreen('MAIN_MENU');
       }
     });
 
-    // Driving HUD buttons
-    on(UI.pause, 'click', () => this.pauseDriving());
+    on(UI.pause, 'click', () => { this.audio.playUIClick(false); this.pauseDriving(); });
     on(UI.camBtn, 'click', () => this.cycleCamera());
-    on(UI.lightsBtn, 'click', () => this.setHeadlights(!this.state.headlightsOn));
-    on(UI.audioBtn, 'click', () => this.setAudioEnabled(!this.audio.enabled));
-    on(UI.resetBtn, 'click', () => this.resetToRoad());
+    on(UI.lightsBtn, 'click', () => { this.audio.playUIClick(false); this.setHeadlights(!this.state.headlightsOn); });
+    on(UI.audioBtn, 'click', () => { this.audio.playUIClick(false); this.setAudioEnabled(!this.audio.enabled); });
+    on(UI.resetBtn, 'click', () => { this.audio.playUIClick(false); this.resetToRoad(); });
     on(UI.gfxBtn, 'click', () => {
-      const next = PRESET_ORDER[(PRESET_ORDER.indexOf(this.state.preset) + 1) % PRESET_ORDER.length];
-      this.applyGraphicsPreset(next);
-      this.saveSettings();
+      this.audio.playUIClick(true);
+      this.dynScale = 1.0;
+      this.applyRealisticTier(this.hwTier, true);
     });
+    on(UI.gearUp, 'click', () => this.shiftGearManual(1));
+    on(UI.gearDown, 'click', () => this.shiftGearManual(-1));
 
-    // Option chips & Garage Swatches
     this.bindChips('#paint-select [data-paint]', 'paint', (v, btn) => {
       this.setPaint(v, btn ? btn.dataset.paintName : '', false);
     });
     this.bindChips('#time-select .chip-btn', 'time', (v) => { this.state.timeOfDay = v; this.applyEnvironmentState(); this.saveSettings(); });
     this.bindChips('#weather-select .chip-btn', 'weather', (v) => { this.state.weather = v; this.applyEnvironmentState(); this.saveSettings(); });
     this.bindChips('#spawn-select .chip-btn', 'spawn', (v) => { this.state.spawn = v; this.teleportToZone(v); this.saveSettings(); });
-    this.bindChips('#preset-select .chip-btn', 'preset', (v) => { this.applyGraphicsPreset(v); this.saveSettings(); });
+    this.bindChips('#preset-select .chip-btn', 'preset', () => {
+      this.dynScale = 1.0;
+      this.applyRealisticTier(this.hwTier, false);
+      this.saveSettings();
+    });
     this.bindChips('#assist-select .chip-btn', 'assist', (v) => {
       this.state.assistMode = v;
       setText(UI.modePill, v === 'sim' ? 'M-DYNAMIC' : 'STABLE');
       this.updateGarageStatsUI();
+      this.saveSettings();
+    });
+    this.bindChips('#trans-select .chip-btn', 'trans', (v) => {
+      this.state.transMode = v;
       this.saveSettings();
     });
     this.bindChips('#units-select .chip-btn', 'units', (v) => {
@@ -1890,7 +2067,14 @@ class UltimateDriveSimulator {
     this.bindChips('#audio-toggle-group .chip-btn', 'audio', (v) => this.setAudioEnabled(v === 'on'));
     this.bindChips('#exhaust-select .chip-btn', 'exhaust', (v) => { this.audio.sportExhaust = v === 'sport'; this.saveSettings(); });
 
-    // Toggles
+    on(UI.toggleAutoRes, 'change', (e) => {
+      this.state.autoQuality = !!e.target.checked;
+      if (!this.state.autoQuality) {
+        this.dynScale = 1.0;
+        this.updateViewportSize();
+      }
+      this.saveSettings();
+    });
     on(UI.toggleShadows, 'change', (e) => {
       this.state.shadowsEnabled = !!e.target.checked;
       this.sunLight.castShadow = this.state.shadowsEnabled && this.cfg.shadow;
@@ -1908,16 +2092,15 @@ class UltimateDriveSimulator {
       this.saveSettings();
     });
     on(UI.toggleFullscreen, 'change', (e) => {
-      if (e.target.checked && document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(() => { e.target.checked = false; });
-      } else if (!e.target.checked && document.fullscreenElement && document.exitFullscreen) {
+      if (e.target.checked) {
+        this.requestImmersiveFullscreen();
+      } else if (document.fullscreenElement && document.exitFullscreen) {
         document.exitFullscreen().catch(() => {});
       }
     });
 
-    // Sliders
     bindValue(UI.res, (v) => {
-      this.state.resScale = THREE.MathUtils.clamp(parseFloat(v) || 1, 0.5, 1.25);
+      this.state.resScale = THREE.MathUtils.clamp(parseFloat(v) || 1, 0.6, 1.25);
       this.updateViewportSize();
       setText(UI.resLabel, `${Math.round(this.state.resScale * 100)}%`);
     });
@@ -1957,14 +2140,17 @@ class UltimateDriveSimulator {
       setText(UI.fxVolLabel, `${Math.round(this.audio.fxVolume * 100)}%`);
     });
 
-    // Multi-touch pointer hold buttons
     const hold = (id, key) => {
       const el = $(id);
       if (!el) return;
+      const activePointers = new Set();
       const down = (e) => {
         e.preventDefault();
-        if (el.setPointerCapture && e.pointerId !== undefined) {
-          try { el.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+        if (e.pointerId !== undefined) {
+          activePointers.add(e.pointerId);
+          if (el.setPointerCapture) {
+            try { el.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+          }
         }
         this.audio.init();
         this.input[key] = true;
@@ -1972,13 +2158,16 @@ class UltimateDriveSimulator {
       };
       const up = (e) => {
         e.preventDefault();
-        this.input[key] = false;
-        el.classList.remove('pressed');
+        if (e.pointerId !== undefined) activePointers.delete(e.pointerId);
+        if (activePointers.size === 0) {
+          this.input[key] = false;
+          el.classList.remove('pressed');
+        }
       };
       el.addEventListener('pointerdown', down);
       el.addEventListener('pointerup', up);
-      el.addEventListener('pointerleave', up);
       el.addEventListener('pointercancel', up);
+      el.addEventListener('lostpointercapture', up);
       el.addEventListener('contextmenu', (e) => e.preventDefault());
     };
     hold(UI.left, 'left');
@@ -1987,7 +2176,6 @@ class UltimateDriveSimulator {
     hold(UI.brake, 'brake');
     hold(UI.pbrake, 'handbrake');
 
-    // Keyboard controls + Escape navigation
     const keyMap = {
       ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
       ArrowUp: 'throttle', KeyW: 'throttle', ArrowDown: 'brake', KeyS: 'brake', Space: 'handbrake'
@@ -2001,6 +2189,8 @@ class UltimateDriveSimulator {
       } else if (e.code === 'KeyC') this.cycleCamera();
       else if (e.code === 'KeyL') this.setHeadlights(!this.state.headlightsOn);
       else if (e.code === 'KeyM') this.setAudioEnabled(!this.audio.enabled);
+      else if (e.code === 'KeyQ') this.shiftGearManual(-1);
+      else if (e.code === 'KeyE') this.shiftGearManual(1);
       else if (e.code === 'KeyP') this.togglePause();
       else if (e.code === 'Escape') {
         e.preventDefault();
@@ -2244,24 +2434,30 @@ class UltimateDriveSimulator {
   }
 
   adaptQuality(fps) {
-    if (!this.autoQuality || this.clock.elapsedTime < 4 || document.hidden || this.state.portraitPaused) return;
+    if (!this.state.autoQuality || this.clock.elapsedTime < 4 || document.hidden || this.state.portraitPaused) return;
     this.adaptT += 0.5;
-    if (fps < 40 && this.adaptT >= 1.5) {
+    if (fps < 42 && this.adaptT >= 1.5) {
       this.adaptT = 0;
       this.goodT = 0;
-      if (this.dynScale > 0.80) {
-        this.dynScale = Math.max(0.78, this.dynScale - 0.05);
+      if (this.dynScale > 0.78) {
+        this.dynScale = Math.max(0.75, this.dynScale - 0.05);
         this.updateViewportSize();
-      } else if (fps < 30) {
-        const i = PRESET_ORDER.indexOf(this.state.preset);
-        if (i > 0) this.applyGraphicsPreset(PRESET_ORDER[i - 1]);
+        setText(UI.hwTierLabel, `${this.cfg.name} (${Math.round(this.dynScale * 100)}% SCALE)`);
+      } else if (fps < 30 && this.hwTier > 0) {
+        this.dynScale = 0.92;
+        this.applyRealisticTier(this.hwTier - 1, true);
       }
     } else if (fps >= 57) {
       this.goodT += 0.5;
-      if (this.goodT >= 6 && this.dynScale < 1) {
+      if (this.goodT >= 5) {
         this.goodT = 0;
-        this.dynScale = Math.min(1, this.dynScale + 0.05);
-        this.updateViewportSize();
+        if (this.dynScale < 1.0) {
+          this.dynScale = Math.min(1.0, this.dynScale + 0.05);
+          this.updateViewportSize();
+          setText(UI.hwTierLabel, `${this.cfg.name} (${Math.round(this.dynScale * 100)}% SCALE)`);
+        } else if (this.hwTier < 2 && !IS_MOBILE) {
+          this.applyRealisticTier(this.hwTier + 1, true);
+        }
       }
     } else {
       this.goodT = 0;
@@ -2282,32 +2478,41 @@ class UltimateDriveSimulator {
   }
 
   // --------------------------------------------------------------------------
-  // ASSET PACK
+  // PART 7: MEASURED ASSET LOADING WITH REAL PROGRESS FEEDBACK
   // --------------------------------------------------------------------------
   loadAssets() {
-    const mgr = new THREE.LoadingManager();
-    mgr.onProgress = (url, done, total) => {
+    const totalExpected = 8;
+    let settledCount = 0;
+    const recordAssetProgress = (name) => {
+      settledCount = Math.min(totalExpected, settledCount + 1);
+      const pct = Math.round((settledCount / totalExpected) * 100);
       const pf = $(UI.progress);
-      if (pf) pf.style.width = `${Math.round((done / total) * 100)}%`;
+      if (pf) pf.style.width = `${pct}%`;
+      setText(UI.loadingPct, `${pct}%`);
+      setText(UI.loadingAsset, `Loaded ${name} (${settledCount}/${totalExpected})`);
+      if (settledCount >= totalExpected) {
+        this.finishLoading();
+      }
     };
-    mgr.onLoad = () => this.finishLoading();
-    const loader = new THREE.TextureLoader(mgr);
+
+    const loader = new THREE.TextureLoader();
     const aniso = Math.min(this.renderer.capabilities.getMaxAnisotropy(), 4);
-    const onTex = (t, apply) => {
+    const onTex = (t, apply, label) => {
       t.anisotropy = aniso;
       t.colorSpace = THREE.SRGBColorSpace;
       try { apply(t); } catch (_) { /* keep procedural fallback */ }
+      recordAssetProgress(label);
     };
-    const load = (file, apply) => loader.load(
+    const load = (file, label, apply) => loader.load(
       ASSET(file),
-      (t) => onTex(t, apply),
+      (t) => onTex(t, apply, label),
       undefined,
       () => {
         loader.load(
           ASSET_FALLBACK(file),
-          (t2) => onTex(t2, apply),
+          (t2) => onTex(t2, apply, label),
           undefined,
-          () => { /* optional texture absent; procedural texture stays */ }
+          () => recordAssetProgress(`${label} (Procedural Fallback)`)
         );
       }
     );
@@ -2320,7 +2525,7 @@ class UltimateDriveSimulator {
       if (old && old !== tex) old.dispose();
     };
 
-    load('textures/asphalt_512.png', (t) => {
+    load('textures/asphalt_512.png', 'Road Asphalt PBR', (t) => {
       tile(t, 4, this.roadLength / this.laneTiles / 4);
       setMap(this.roadMaterial, t);
       this.laneMesh.visible = true;
@@ -2331,14 +2536,14 @@ class UltimateDriveSimulator {
       this.assets.asphalt = t;
       this.applyBump();
     });
-    load('textures/lane_markings_512.png', (t) => {
+    load('textures/lane_markings_512.png', 'Lane Markings', (t) => {
       this.drawLaneOverlay(t.image);
       t.dispose();
     });
-    load('textures/grass_512.png', (t) => {
+    load('textures/grass_512.png', 'Terrain Grass', (t) => {
       setMap(this.groundMat, tile(t, 1200, 1200), 0xa8c690);
     });
-    load('textures/concrete_512.png', (t) => {
+    load('textures/concrete_512.png', 'Urban Concrete', (t) => {
       setMap(this.sidewalkMat, tile(t, 1, 1), 0xb8bcc2);
       setMap(this.barrierMat, t, 0xaab0b8);
       const rock = t.clone(); rock.repeat.set(10, 6); rock.needsUpdate = true;
@@ -2348,7 +2553,7 @@ class UltimateDriveSimulator {
       this.facade.draw(t.image);
       this.assets.concrete = t;
     });
-    load('environment/sky_gradient_1024x512.png', (t) => {
+    load('environment/sky_gradient_1024x512.png', 'HDRI Sky Dome', (t) => {
       t.generateMipmaps = false;
       t.minFilter = THREE.LinearFilter;
       this.skyUniforms.skyTex.value = t;
@@ -2357,7 +2562,7 @@ class UltimateDriveSimulator {
       this.refreshEnvMap();
       this.assets.sky = t;
     });
-    load('ui/garage_floor_glow.png', (t) => {
+    load('ui/garage_floor_glow.png', 'Showroom Lighting', (t) => {
       if (this.garageRing) {
         const old = this.garageRing.material.map;
         this.garageRing.material.map = t;
@@ -2365,11 +2570,12 @@ class UltimateDriveSimulator {
         if (old && old !== t) old.dispose();
       }
     });
-    this.loadVehicleGLB(ASSET('vehicles/bmw_m4.glb'), new GLTFLoader(mgr));
-    load('textures/carbon_fiber_512.png', (t) => { this.assets.carbon = tile(t, 2, 2); this.applyCarTextures(); });
-    load('textures/tire_rubber_512.png', (t) => { this.assets.tire = tile(t, 6, 1); this.applyCarTextures(); });
+    load('textures/carbon_fiber_512.png', 'M-Carbon Weave', (t) => { this.assets.carbon = tile(t, 2, 2); this.applyCarTextures(); });
+    load('textures/tire_rubber_512.png', 'Performance Tire Tread', (t) => { this.assets.tire = tile(t, 6, 1); this.applyCarTextures(); });
 
-    setTimeout(() => this.finishLoading(), 2200);
+    this.loadVehicleGLB(ASSET('vehicles/bmw_m4.glb'), new GLTFLoader());
+
+    setTimeout(() => this.finishLoading(), 3500);
   }
 
   finishLoading() {
@@ -2377,7 +2583,9 @@ class UltimateDriveSimulator {
     this.loadDone = true;
     const pf = $(UI.progress);
     if (pf) pf.style.width = '100%';
-    setTimeout(() => show(UI.loading, false), 220);
+    setText(UI.loadingPct, '100%');
+    setText(UI.loadingStatus, 'RR STUDIOS Realistic Engine Ready');
+    setTimeout(() => show(UI.loading, false), 260);
   }
 
   drawLaneOverlay(img) {
@@ -2567,7 +2775,7 @@ class UltimateDriveSimulator {
     };
     this.setPaint(this.state.paintHex, this.state.paintName, false);
     this.setHeadlights(this.state.headlightsOn);
-    this.applyGraphicsPreset(this.state.preset, true);
+    this.applyRealisticTier(this.hwTier, true);
     setText(UI.glbStatus, 'Custom GLB vehicle model installed.');
     return true;
   }
@@ -2607,7 +2815,7 @@ class UltimateDriveSimulator {
     if (this.laneTex) this.laneTex.dispose();
     Object.values(this.assets).forEach((t) => t.dispose && t.dispose());
     if (this.audio && this.audio.ctx) this.audio.ctx.close().catch(() => {});
-    this.renderer.dispose();
+    if (this.renderer) this.renderer.dispose();
   }
 
   resetToRoad() {
@@ -2620,7 +2828,7 @@ class UltimateDriveSimulator {
   }
 
   // --------------------------------------------------------------------------
-  // PHYSICS
+  // PHYSICS (Progressive Throttle & Brake + Auto/Manual 6-Speed Transmission)
   // --------------------------------------------------------------------------
   nearestSample(pos) {
     const S = this.roadSamples, n = S.length;
@@ -2656,11 +2864,19 @@ class UltimateDriveSimulator {
     const vl0 = p.vel.dot(_vForward);
     let vl = vl0;
 
-    this.throttleVal += ((inp.throttle ? 1 : 0) - this.throttleVal) * Math.min(1, dt * 6);
+    const throttleRate = inp.throttle ? 4.8 : 7.2;
+    this.throttleVal += ((inp.throttle ? 1 : 0) - this.throttleVal) * Math.min(1, dt * throttleRate);
+    this.brakeVal += ((inp.brake ? 1 : 0) - this.brakeVal) * Math.min(1, dt * 8.0);
+
+    const gearTopMps = (GEAR_MAX_KMH[p.gear - 1] || 300) / 3.6;
+    const gearTorqueMult = this.state.transMode === 'manual' && vl > gearTopMps * 1.03 ? 0.15 : 1.0;
+
     let acc = 0;
-    if (inp.throttle) acc += 11.8 * Math.max(0, 1 - vl / 82) * Math.min(1, W.grip + 0.15);
+    if (this.throttleVal > 0.02) {
+      acc += 11.8 * this.throttleVal * gearTorqueMult * Math.max(0, 1 - vl / 83) * Math.min(1, W.grip + 0.15);
+    }
     if (inp.brake) {
-      if (vl > 0.5) acc -= 15.5 * W.grip;
+      if (vl > 0.5) acc -= 15.8 * this.brakeVal * W.grip;
       else if (vl > -11) acc -= 5.2;
     }
     acc -= vl * 0.04 + Math.sign(vl) * 0.0011 * vl * vl;
@@ -2733,27 +2949,31 @@ class UltimateDriveSimulator {
     p.speedKmh = vlF * 3.6;
     p.distanceMeters += p.speedMps * dt;
 
-    // Telemetry simulation connected to actual driving load (never random)
     p.fuel = Math.max(5.0, p.fuel - (p.speedMps * 0.00018 + this.throttleVal * 0.0014) * dt);
     const targetTemp = 88.0 + (p.rpm / 7200) * 14.0 + this.throttleVal * 4.0 - Math.min(6.0, p.speedMps * 0.08);
     p.engineTemp += (targetTemp - p.engineTemp) * Math.min(1, dt * 0.45);
 
     const kmh = Math.abs(p.speedKmh);
-    let g = 1;
-    while (g < 6 && kmh > GEAR_MAX_KMH[g - 1]) g++;
-    if (g !== this.prevGear && kmh > 5) {
-      const up = g > this.prevGear;
-      this.audio.shift(up, this.throttleVal);
-      if (up) p.rpm = Math.max(900, p.rpm - 1400);
-      this.pulseGear();
+    if (this.state.transMode === 'auto') {
+      let g = 1;
+      while (g < 6 && kmh > GEAR_MAX_KMH[g - 1]) g++;
+      if (g !== this.prevGear && kmh > 5) {
+        const up = g > this.prevGear;
+        this.audio.shift(up, this.throttleVal);
+        if (up) p.rpm = Math.max(900, p.rpm - 1400);
+        this.pulseGear();
+      }
+      this.prevGear = g;
+      p.gear = g;
     }
-    this.prevGear = g;
-    p.gear = g;
-    const lo = g === 1 ? 0 : GEAR_MAX_KMH[g - 2];
-    const frac = (kmh - lo) / (GEAR_MAX_KMH[g - 1] - lo);
-    const rpmTarget = kmh < 2 ? 850 + this.throttleVal * 4800 : 850 + Math.min(1, 0.1 + 0.9 * frac) * 6350;
+
+    const g = p.gear;
+    const lo = g === 1 ? 0 : GEAR_MAX_KMH[g - 2] * 0.75;
+    const hi = GEAR_MAX_KMH[g - 1];
+    const frac = THREE.MathUtils.clamp((kmh - lo) / Math.max(10, hi - lo), 0, 1.08);
+    const rpmTarget = kmh < 2 ? 850 + this.throttleVal * 4800 : 850 + Math.min(1.03, 0.12 + 0.88 * frac) * 6350;
     p.rpm += (rpmTarget - p.rpm) * Math.min(1, dt * 9);
-    p.rpm = THREE.MathUtils.clamp(p.rpm, 850, 7200);
+    p.rpm = THREE.MathUtils.clamp(p.rpm, 850, 7400);
 
     const pitchT = THREE.MathUtils.clamp(-acc * 0.0035, -0.06, 0.06);
     const rollT = THREE.MathUtils.clamp(p.angularVel * vlF * 0.0018, -0.08, 0.08);
@@ -2817,7 +3037,7 @@ class UltimateDriveSimulator {
   }
 
   // --------------------------------------------------------------------------
-  // CAMERA (Main Menu Hero, Garage Showroom, Pause View, & 5 Driving Modes)
+  // CAMERA (Elevated Chase Framing + Showroom + 5 Driving Views)
   // --------------------------------------------------------------------------
   updateCamera(dt) {
     const p = this.physics;
@@ -2836,7 +3056,6 @@ class UltimateDriveSimulator {
       _vWantLook.copy(p.pos).add(new THREE.Vector3(0, 0.88, 0));
       snap = true;
     } else if (this.state.screen === 'GARAGE') {
-      // Garage showroom presentation camera (matches 03_garage.png)
       key = 'GARAGE';
       if (!this.garageDragActive) this.orbitAngle += dt * 0.18;
       const r = 5.4;
@@ -2845,7 +3064,6 @@ class UltimateDriveSimulator {
       _vWantLook.copy(p.pos).add(new THREE.Vector3(0, 0.68, 0));
       fov = 50;
     } else if (this.state.screen === 'MAIN_MENU' || this.state.screen === 'SETTINGS') {
-      // Main Menu low front-3/4 hero angle framing car on left, buttons on right (matches 01_main_menu.png)
       key = 'HERO';
       if (!this.garageDragActive) this.orbitAngle += dt * 0.08;
       const a = p.heading + 0.58 + Math.sin(this.orbitAngle) * 0.22;
@@ -2854,7 +3072,6 @@ class UltimateDriveSimulator {
       _vWantLook.copy(p.pos).addScaledVector(_vLeft, -0.75).add(new THREE.Vector3(0, 0.68, 0));
       fov = 52;
     } else if (this.state.screen === 'PAUSE') {
-      // Pause menu rear-3/4 highway framing car on right, menu on left (matches 05_pause_menu.png)
       key = 'PAUSE';
       _vWantPos.copy(p.pos).addScaledVector(_vForward, -5.6).addScaledVector(_vLeft, 1.35);
       _vWantPos.y += 1.48;
@@ -2867,7 +3084,6 @@ class UltimateDriveSimulator {
       const spd = Math.min(1, Math.abs(p.speedKmh) / 200);
 
       if (idx === 0 || idx === 1) {
-        // Elevated chase framing: look slightly lower so the car renders higher on screen above the bottom HUD arch
         const back = (idx === 0 ? 6.8 : 4.7) + spd * 1.4;
         const up = (idx === 0 ? 2.45 : 1.72) - spd * 0.18;
         _vWantPos.copy(p.pos).addScaledVector(_vForward, -back).addScaledVector(_vLeft, p.angularVel * -0.85);
@@ -2937,7 +3153,7 @@ class UltimateDriveSimulator {
   }
 
   // --------------------------------------------------------------------------
-  // PART 1: PREMIUM DIGITAL SPEEDOMETER & HUD UPDATE
+  // PART 3: DIGITAL SPEEDOMETER & HUD UPDATE
   // --------------------------------------------------------------------------
   updateHUD() {
     const p = this.physics;
@@ -2946,12 +3162,12 @@ class UltimateDriveSimulator {
     const speedRounded = Math.round(rawSpeed);
     const rpmRounded = Math.round(p.rpm / 10) * 10;
 
-    let driveChar = 'D';
+    let driveChar = this.state.transMode === 'manual' ? 'M' : 'D';
     let gearStr = String(p.gear);
     if (p.speedKmh < -1) {
       driveChar = 'R';
       gearStr = '1';
-    } else if (Math.abs(p.speedKmh) < 1 && !this.input.throttle) {
+    } else if (Math.abs(p.speedKmh) < 1 && !this.input.throttle && this.state.transMode === 'auto') {
       driveChar = 'N';
       gearStr = '-';
     }
@@ -2965,7 +3181,6 @@ class UltimateDriveSimulator {
     setText(UI.fuel, `${Math.round(p.fuel)}%`);
     setText(UI.temp, `${Math.round(p.engineTemp)}°C`);
 
-    // Animated SVG Tachometer Arc (0..8000 RPM scale)
     const rpmFrac = THREE.MathUtils.clamp(p.rpm / 8000, 0.04, 1.0);
     const arcEl = $(UI.tachArc);
     if (arcEl) {
@@ -2976,14 +3191,12 @@ class UltimateDriveSimulator {
     const bar = $(UI.rpmBar);
     if (bar) bar.style.width = `${(p.rpm / 7200 * 100).toFixed(1)}%`;
 
-    // Redline shift indicator
-    const isShiftZone = p.rpm >= 6250 && driveChar === 'D';
+    const isShiftZone = p.rpm >= 6250 && driveChar !== 'N' && driveChar !== 'R';
     const shiftPill = $(UI.shiftPill);
     const cluster = $(UI.cluster);
     if (shiftPill) shiftPill.classList.toggle('active', isShiftZone);
     if (cluster) cluster.classList.toggle('redline-shift', isShiftZone);
 
-    // Dashboard indicator lamps (turn signals, handbrake)
     const blinkOn = Math.floor(this.clock.elapsedTime * 3.5) % 2 === 0;
     const indL = $(UI.indLeft);
     const indR = $(UI.indRight);
@@ -3010,7 +3223,7 @@ class UltimateDriveSimulator {
     const rawDt = this.clock.getDelta();
     const dt = Math.min(rawDt, 0.05);
 
-    if (this.state.portraitPaused) return;
+    if (this.state.portraitPaused || this.contextLost) return;
 
     this.frame++;
     this.fpsFrames++;
@@ -3033,10 +3246,8 @@ class UltimateDriveSimulator {
       this.updateTraffic(dt);
       this.updateParticles(dt);
     } else if (this.state.mode === 'PAUSED') {
-      // Freeze vehicle and traffic while paused
       this.accum = 0;
     } else {
-      // Main Menu / Garage / Intro background traffic & environment
       this.accum = 0;
       this.physics.vel.multiplyScalar(Math.max(0, 1 - dt * 3));
       this.updateTraffic(dt);
@@ -3071,112 +3282,15 @@ class UltimateDriveSimulator {
 }
 
 // ============================================================================
-// 5. BOOT
+// 5. BOOT (with built-in compact HUD style safeguard)
 // ============================================================================
 function boot() {
   try {
-    if (!document.getElementById('bmw-compact-hud-fix')) {
-      const st = document.createElement('style');
-      st.id = 'bmw-compact-hud-fix';
-      st.textContent = `
-html body .instrument-cluster {
-  position: absolute !important;
-  bottom: max(2px, env(safe-area-inset-bottom)) !important;
-  left: 50% !important;
-  transform: translateX(-50%) scale(0.74) !important;
-  transform-origin: bottom center !important;
-  display: flex !important;
-  align-items: flex-end !important;
-  gap: 2px !important;
-  padding: 0 6px 2px !important;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  pointer-events: none !important;
-}
-html body .instrument-cluster::before,
-html body .instrument-cluster::after {
-  display: none !important;
-}
-html body .instrument-cluster.redline-shift .cluster-center-arch {
-  filter: drop-shadow(0 0 14px rgba(228, 30, 38, 0.75)) !important;
-}
-html body .cluster-wing {
-  width: 54px !important;
-  padding: 4px 4px 3px !important;
-  background: linear-gradient(180deg, rgba(10, 15, 26, 0.78) 0%, rgba(5, 8, 14, 0.92) 100%) !important;
-  border: 1px solid rgba(0, 168, 255, 0.28) !important;
-  border-radius: 10px 10px 6px 6px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55) !important;
-}
-html body .wing-left { transform: skewX(-10deg); }
-html body .wing-left > * { transform: skewX(10deg); }
-html body .wing-right { transform: skewX(10deg); }
-html body .wing-right > * { transform: skewX(-10deg); }
-html body .wing-icon { width: 14px !important; height: 14px !important; }
-html body .cluster-wing strong { font-size: 0.7rem !important; }
-html body .cluster-center-arch {
-  position: relative !important;
-  width: 212px !important;
-  padding-top: 2px !important;
-  background: radial-gradient(ellipse 52% 66% at 50% 82%, rgba(7, 11, 20, 0.88) 0%, rgba(7, 11, 20, 0.58) 66%, rgba(7, 11, 20, 0) 100%) !important;
-}
-html body .tach-svg {
-  width: 212px !important;
-  height: 94px !important;
-}
-html body .cluster-readout {
-  top: 30px !important;
-  gap: 10px !important;
-  padding-left: 12px !important;
-}
-html body #hud-speed { font-size: 2.15rem !important; line-height: 0.9 !important; }
-html body #hud-speed-unit { font-size: 0.55rem !important; margin-top: 2px !important; }
-html body .drive-mode-char { font-size: 1.15rem !important; }
-html body .gear-box { font-size: 1.25rem !important; }
-html body .rpm-bar-container { width: 70% !important; height: 3.5px !important; margin-top: -5px !important; }
-html body .cluster-bottom-meta { width: 84% !important; margin-top: 2px !important; }
-html body .rpm-caption { font-size: 0.52rem !important; }
-html body .hud-top {
-  padding-top: max(6px, env(safe-area-inset-top)) !important;
-  padding-left: max(12px, env(safe-area-inset-left)) !important;
-  padding-right: max(12px, env(safe-area-inset-right)) !important;
-}
-html body .minimap-ring { width: 88px !important; height: 88px !important; }
-html body #zone-label { font-size: 0.5rem !important; padding: 1px 6px !important; margin-top: 2px !important; }
-html body .hud-top-right-stack { gap: 4px !important; }
-html body .hud-circle-btn { height: 30px !important; min-width: 30px !important; padding: 0 7px !important; border-radius: 8px !important; font-size: 0.58rem !important; }
-html body .hud-telemetry-card { padding: 4px 8px !important; min-width: 94px !important; gap: 2px !important; }
-html body .tele-row { font-size: 0.6rem !important; gap: 5px !important; }
-html body .touch-controls-left { left: max(12px, env(safe-area-inset-left)) !important; bottom: max(8px, env(safe-area-inset-bottom)) !important; gap: 10px !important; }
-html body .touch-controls-right { right: max(12px, env(safe-area-inset-right)) !important; bottom: max(8px, env(safe-area-inset-bottom)) !important; gap: 6px !important; }
-html body .steer-btn { width: 62px !important; height: 62px !important; }
-html body .ebrake-btn { width: 42px !important; height: 42px !important; font-size: 0.74rem !important; }
-html body .pedals-row { gap: 8px !important; }
-html body .pedal-brake { width: 52px !important; height: 64px !important; }
-html body .pedal-gas { width: 56px !important; height: 86px !important; }
-@media (orientation: landscape) and (max-height: 370px) {
-  html body .instrument-cluster { transform: translateX(-50%) scale(0.62) !important; bottom: 0px !important; }
-  html body .minimap-ring { width: 74px !important; height: 74px !important; }
-  html body .steer-btn { width: 54px !important; height: 54px !important; }
-  html body .ebrake-btn { width: 36px !important; height: 36px !important; font-size: 0.68rem !important; }
-  html body .pedal-brake { width: 46px !important; height: 56px !important; }
-  html body .pedal-gas { width: 50px !important; height: 74px !important; }
-  html body .hud-telemetry-card { padding: 3px 6px !important; }
-  html body .tele-row { font-size: 0.54rem !important; }
-}
-@media (min-width: 960px) and (min-height: 540px) {
-  html body .instrument-cluster { transform: translateX(-50%) scale(0.92) !important; bottom: 8px !important; }
-  html body .minimap-ring { width: 124px !important; height: 124px !important; }
-  html body .steer-btn { width: 76px !important; height: 76px !important; }
-  html body .ebrake-btn { width: 52px !important; height: 52px !important; }
-  html body .pedal-brake { width: 66px !important; height: 82px !important; }
-  html body .pedal-gas { width: 70px !important; height: 110px !important; }
-}
-`;
-      document.head.appendChild(st);
+    if (!document.querySelector('link[href*="hud-upgrade.css"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = './hud-upgrade.css';
+      document.head.appendChild(link);
     }
     window.__game = new UltimateDriveSimulator();
   } catch (err) {
