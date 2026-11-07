@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { buildProceduralBMW, buildRivalBMWCoupe, loadExternalGLBVehicle } from './carBuilder.js';
+import { VEHICLE_CATALOG, buildProceduralBMW, buildRivalBMWCoupe, buildNPCPedestrian, loadExternalGLBVehicle } from './carBuilder.js';
 
 // ============================================================================
 // 0. UI ELEMENT IDS - synchronized with index.html (Phase 1 Foundation Overhaul)
@@ -75,7 +75,24 @@ const UI = {
   // Phase 2 HUD Event Telemetry, Hazard & Horn IDs
   hudEventBanner: 'hud-event-banner', hudEventMode: 'hud-event-mode',
   hudEventStatus: 'hud-event-status', hudSessionCredits: 'hud-session-credits',
-  hudSkillToast: 'hud-skill-toast', hudHazard: 'btn-hud-hazard', hudHorn: 'btn-hud-horn'
+  hudSkillToast: 'hud-skill-toast', hudHazard: 'btn-hud-hazard', hudHorn: 'btn-hud-horn',
+  // Ultimate Evolution: Open-World Map, Missions, Vehicle Carousel & HUD Prompts
+  openMap: 'btn-open-map', openMissions: 'btn-open-missions',
+  carPrev: 'btn-car-prev', carNext: 'btn-car-next', vehicleCarousel: 'vehicle-carousel',
+  worldMapScreen: 'world-map-screen', mapHome: 'btn-map-home', mapBack: 'btn-map-back',
+  mapFastTravel: 'btn-map-fast-travel', mapClearWp: 'btn-map-clear-wp',
+  worldMapCanvas: 'world-map-canvas', mapDiscoveredLabel: 'map-discovered-label',
+  mapSelectedZone: 'map-selected-zone', mapPoiType: 'map-poi-type',
+  mapPoiTitle: 'map-poi-title', mapPoiDesc: 'map-poi-desc',
+  missionsScreen: 'missions-screen', missionsHome: 'btn-missions-home',
+  missionsBack: 'btn-missions-back', missionsFreeroam: 'btn-missions-freeroam',
+  missionsGrid: 'missions-grid', missionsProgress: 'missions-progress-label',
+  missionModal: 'mission-complete-modal', missionModalTitle: 'mission-modal-title',
+  missionModalDesc: 'mission-modal-desc', mmStatName: 'mm-stat-name',
+  mmStatTime: 'mm-stat-time', mmStatReward: 'mm-stat-reward',
+  mmStatBalance: 'mm-stat-balance', btnMissionClaim: 'btn-mission-claim',
+  hudMapBtn: 'btn-hud-map', hudMissionPrompt: 'hud-mission-prompt',
+  hudCountdown: 'hud-countdown-overlay'
 };
 
 const STORAGE_KEY = 'rr_studios_bmw_phase1_settings';
@@ -89,6 +106,10 @@ const PHYS_STEP = 1 / 60;
 const LANE_TILE_M = 60;
 const CAMERA_NAMES = ['CHASE', 'CLOSE', 'FRONT', 'SIDE', 'COCKPIT'];
 const TACH_ARC_LEN = 364.4;
+
+const escapeHTML = (str) => String(str || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const sanitizeCallsign = (str) => String(str || '').replace(/[^a-zA-Z0-9_\- ]/g, '').trim().slice(0, 16) || 'RR_PILOT';
+const sanitizeHex = (str, fallback = '#168BFF') => /^#[0-9a-fA-F]{6}$/.test(String(str || '')) ? str : fallback;
 
 const _els = new Map();
 const $ = (id) => {
@@ -133,6 +154,8 @@ class AutomotiveAudioEngine {
     this.musicVolume = 0.4;
     this.fxVolume = 0.85;
     this.sportExhaust = true;
+    this.engineProfile = 'I6_TURBO';
+    this.interiorView = false;
     this.initialized = false;
     this.lastPop = 0;
     this.shiftUntil = 0;
@@ -238,6 +261,50 @@ class AutomotiveAudioEngine {
   }
 
   // Synthesizes a crisp automotive iDrive UI button click/confirm tone
+  playEngineStart(profile = 'I6_TURBO') {
+    this.engineProfile = profile || 'I6_TURBO';
+    this.init();
+    if (!this.initialized || !this.enabled || !this.ctx) return;
+    try {
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = profile === 'V10_SCREAM' ? 'sawtooth' : 'triangle';
+      const baseF = profile === 'V8_RUMBLE' ? 68 : (profile === 'V10_SCREAM' ? 115 : 88);
+      osc.frequency.setValueAtTime(baseF * 0.6, now);
+      osc.frequency.exponentialRampToValueAtTime(baseF * 2.6, now + 0.18);
+      osc.frequency.exponentialRampToValueAtTime(baseF * 1.1, now + 0.55);
+      g.gain.setValueAtTime(0.001, now);
+      g.gain.linearRampToValueAtTime(0.18 * this.engineVolume, now + 0.14);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.60);
+      osc.connect(g);
+      g.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + 0.62);
+    } catch (_) {}
+  }
+
+  playCollisionSound(intensity = 0.6) {
+    this.init();
+    if (!this.initialized || !this.enabled || !this.ctx) return;
+    try {
+      const ctx = this.ctx;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(34, now + 0.18);
+      g.gain.setValueAtTime(Math.min(0.28, intensity * 0.22) * this.fxVolume, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      osc.connect(g);
+      g.connect(this.masterGain);
+      osc.start(now);
+      osc.stop(now + 0.24);
+    } catch (_) {}
+  }
+
   playHorn() {
     this.init();
     if (!this.initialized || !this.enabled || !this.ctx) return;
@@ -369,13 +436,15 @@ class AutomotiveAudioEngine {
     }
 
     const dip = now < this.shiftUntil ? 0.35 : 1;
-    const baseFreq = Math.max(28, (rpm / 60) * 1.5);
+    const profMult = this.engineProfile === 'V10_SCREAM' ? 1.38 : (this.engineProfile === 'V8_RUMBLE' ? 0.78 : 1.0);
+    const baseFreq = Math.max(24, (rpm / 60) * 1.5 * profMult);
     this.osc1.frequency.setTargetAtTime(baseFreq, now, 0.03);
-    this.osc2.frequency.setTargetAtTime(baseFreq * 0.5, now, 0.03);
-    this.osc3.frequency.setTargetAtTime(baseFreq * 2, now, 0.03);
+    this.osc2.frequency.setTargetAtTime(baseFreq * (this.engineProfile === 'V8_RUMBLE' ? 0.38 : 0.5), now, 0.03);
+    this.osc3.frequency.setTargetAtTime(baseFreq * (this.engineProfile === 'V10_SCREAM' ? 2.5 : 2.0), now, 0.03);
 
     const exhaustMult = this.sportExhaust ? 1.55 : 0.9;
-    const cutoff = 220 + (rpm / 7200) * 1400 * exhaustMult + throttle * 350;
+    const cabinMuffle = this.interiorView ? 0.62 : 1.0;
+    const cutoff = (220 + (rpm / 7200) * 1400 * exhaustMult + throttle * 350) * cabinMuffle;
     this.engineFilter.frequency.setTargetAtTime(cutoff, now, 0.04);
     this.engineGain.gain.setTargetAtTime((0.4 + throttle * 0.45) * dip * this.engineVolume, now, 0.03);
 
@@ -512,14 +581,16 @@ function createSmokeTexture() {
 // 3. ENVIRONMENT & UNIFIED REALISTIC GRAPHICS ENGINE (Part 4)
 // ============================================================================
 const TIME_PRESETS = {
-  morning: { sky: 0x9fc3dd, sun: 0xfff0d8, sunI: 2.8, sunPos: [-90, 90, 70], hemi: 0.9, exp: 1.0, win: 0.0, env: 1.0, fog: 0.00055, label: 'MORNING', menu: 'MORNING', clock: '08:15', tempC: 19 },
+  sunrise: { sky: 0xd98a6c, sun: 0xffc288, sunI: 2.3, sunPos: [-130, 38, 90], hemi: 0.72, exp: 1.04, win: 0.22, env: 0.88, fog: 0.00070, label: 'SUNRISE', menu: 'SUNRISE DAWN', clock: '06:10', tempC: 17 },
+  morning: { sky: 0x8fc0e8, sun: 0xfff5e4, sunI: 2.9, sunPos: [-80, 110, 70], hemi: 0.94, exp: 1.0, win: 0.0, env: 1.05, fog: 0.00048, label: 'DAYTIME', menu: 'DAYTIME CLEAR', clock: '12:30', tempC: 24 },
   sunset:  { sky: 0x7a4f52, sun: 0xffb870, sunI: 2.6, sunPos: [120, 45, 80], hemi: 0.65, exp: 1.05, win: 0.35, env: 0.85, fog: 0.00075, label: 'SUNSET', menu: 'GOLDEN HOUR', clock: '17:45', tempC: 26 },
   night:   { sky: 0x05070d, sun: 0x6f8cff, sunI: 0.35, sunPos: [-60, 80, -40], hemi: 0.24, exp: 1.25, win: 1.0, env: 0.28, fog: 0.0010, label: 'NIGHT', menu: 'NIGHT CITY', clock: '23:10', tempC: 16 }
 };
 const WEATHER_PRESETS = {
-  clear:      { dark: 1.0, fogMul: 1.0, rain: 0, rough: 0.82, metal: 0.06, grip: 1.0, label: 'CLEAR', tempDelta: 0 },
-  light_rain: { dark: 0.75, fogMul: 1.7, rain: 0.5, rough: 0.42, metal: 0.22, grip: 0.82, label: 'LIGHT RAIN', tempDelta: -4 },
-  heavy_rain: { dark: 0.52, fogMul: 2.9, rain: 1.0, rough: 0.26, metal: 0.32, grip: 0.66, label: 'STORM', tempDelta: -7 }
+  clear:      { dark: 1.0, fogMul: 1.0, rain: 0, rough: 0.80, metal: 0.08, grip: 1.0, label: 'CLEAR', tempDelta: 0 },
+  cloudy:     { dark: 0.86, fogMul: 1.35, rain: 0, rough: 0.74, metal: 0.12, grip: 0.95, label: 'CLOUDY', tempDelta: -2 },
+  light_rain: { dark: 0.75, fogMul: 1.7, rain: 0.5, rough: 0.32, metal: 0.28, grip: 0.82, label: 'RAIN', tempDelta: -4 },
+  heavy_rain: { dark: 0.52, fogMul: 2.9, rain: 1.0, rough: 0.18, metal: 0.38, grip: 0.68, label: 'STORM', tempDelta: -7 }
 };
 const GEAR_MAX_KMH = [55, 95, 140, 190, 240, 300];
 
@@ -530,14 +601,43 @@ const JUNCTION_Z = [-80, 70, 210];
 const nearJunction = (pt, r) => JUNCTION_Z.some((jz) => Math.abs(pt.z - jz) < r && Math.abs(pt.x) < 16);
 
 const SKY = {
-  morning: { top: 0x3f7fcf, hor: 0xbfd9ee, glow: 1.0, mix: 0.7, tint: [1.5, 1.55, 1.6] },
-  sunset:  { top: 0x27345f, hor: 0xff9a5c, glow: 1.4, mix: 0.5, tint: [1.0, 0.95, 0.9] },
+  sunrise: { top: 0x2d4c7c, hor: 0xf49b72, glow: 1.3, mix: 0.65, tint: [1.2, 1.05, 0.95] },
+  morning: { top: 0x2e73d2, hor: 0xbfd9ee, glow: 1.0, mix: 0.75, tint: [1.45, 1.52, 1.6] },
+  sunset:  { top: 0x27345f, hor: 0xff9a5c, glow: 1.4, mix: 0.55, tint: [1.0, 0.95, 0.9] },
   night:   { top: 0x01030a, hor: 0x0a1322, glow: 0.25, mix: 0.0, tint: [0.1, 0.12, 0.2] }
 };
 
 // Part 4: Hardware Tier Profiles inside the single unified "REALISTIC" graphics option.
 // Automatically selected at boot from device memory, CPU cores, and GPU capabilities,
 // and dynamically adjusted at runtime to maintain smooth Android gameplay.
+
+const GRAPHICS_PRESET_PROFILES = {
+  performance: { name: 'PERFORMANCE // 60 FPS MOBILE', dpr: 1.05, res: 0.82, shadow: false, map: 512,  every: 4, spots: false,   tail: false, trees: 0.45, traffic: 8,  npcs: 8,  rain: 0.35, glass: false, coat: true, bump: false, far: 1800 },
+  balanced:    { name: 'BALANCED // MOBILE HD',        dpr: 1.25, res: 0.92, shadow: true,  map: 1024, every: 2, spots: 'night', tail: false, trees: 0.68, traffic: 12, npcs: 14, rain: 0.60, glass: false, coat: true, bump: false, far: 2400 },
+  high:        { name: 'HIGH // PBR ENHANCED',         dpr: 1.65, res: 1.00, shadow: true,  map: 1536, every: 1, spots: true,    tail: true,  trees: 0.88, traffic: 16, npcs: 22, rain: 0.85, glass: false, coat: true, bump: true,  far: 3000 },
+  ultra:       { name: 'ULTRA // 4K SHOWCASE',         dpr: 2.25, res: 1.05, shadow: true,  map: 2048, every: 1, spots: true,    tail: true,  trees: 1.00, traffic: 20, npcs: 32, rain: 1.00, glass: true,  coat: true, bump: true,  far: 3600 }
+};
+
+const OPEN_WORLD_LANDMARKS = [
+  { id: 'lm_city',       name: 'Centennial Glass Plaza',    zone: 'city',        t: 0.04, desc: 'Downtown luxury skyscraper district & central intersection.' },
+  { id: 'lm_festival',   name: 'Horizon Festival Mainstage', zone: 'festival',   t: 0.18, desc: 'Electric-blue neon festival arches, grandstands, and crowd arena.' },
+  { id: 'lm_forest',     name: 'Emerald Pine Village',      zone: 'countryside', t: 0.34, desc: 'Countryside timber cottages surrounded by dense pine woodland.' },
+  { id: 'lm_mountain',   name: 'Alpine Summit Tunnel',      zone: 'highway',     t: 0.56, desc: 'High-altitude mountain ridge pass and illuminated rock tunnel.' },
+  { id: 'lm_coast',      name: 'Azure Lakefront Pier',      zone: 'coast',       t: 0.74, desc: 'Panoramic coastal highway overlooking shimmering waters.' },
+  { id: 'lm_industrial', name: 'Port Gantry & Drift Yard',  zone: 'industrial',  t: 0.90, desc: 'Shipping container port, logistics warehouses, and drift pad.' }
+];
+
+const MISSION_CATALOG = [
+  { id: 'm_street_race',  title: 'Horizon Street Race',      type: 'STREET RACE',      startT: 0.06, checkpoints: 6, timeLimit: 85,  targetSpeed: 0,   reward: 20000, desc: 'Battle AI rivals across Downtown and the Festival circuit through 6 checkpoints.' },
+  { id: 'm_checkpoint',   title: 'Electric Checkpoint Blitz', type: 'CHECKPOINT',      startT: 0.18, checkpoints: 8, timeLimit: 95,  targetSpeed: 0,   reward: 15000, desc: 'Beat the countdown clock through 8 Horizon checkpoints.' },
+  { id: 'm_time_trial',   title: 'Alpine Mountain Time Trial', type: 'TIME TRIAL',     startT: 0.48, checkpoints: 5, timeLimit: 70,  targetSpeed: 0,   reward: 18000, desc: 'Pure high-speed precision sprint through the Alpine Pass and Tunnel.' },
+  { id: 'm_speed_trap',   title: '240 KM/H Highway Radar',    type: 'SPEED CHALLENGE', startT: 0.28, checkpoints: 2, timeLimit: 60,  targetSpeed: 240, reward: 12000, desc: 'Accelerate past 240 KM/H before hitting the highway radar gate.' },
+  { id: 'm_highway',      title: 'Highway Traffic Slalom',    type: 'HIGHWAY EVENT',   startT: 0.66, checkpoints: 5, timeLimit: 80,  targetSpeed: 0,   reward: 14000, desc: 'Thread through moving coastal highway traffic across 5 gates.' },
+  { id: 'm_exploration',  title: 'Horizon Landmark Tour',     type: 'EXPLORATION',     startT: 0.35, checkpoints: 4, timeLimit: 110, targetSpeed: 0,   reward: 16000, desc: 'Explore the Countryside, Mountain Pass, and Coastline vista points.' },
+  { id: 'm_delivery',     title: 'VIP Prototype Delivery',    type: 'DELIVERY',        startT: 0.12, checkpoints: 6, timeLimit: 90,  targetSpeed: 0,   reward: 22000, desc: 'Deliver the prototype vehicle to the Industrial Port before time expires.' },
+  { id: 'm_drift',        title: 'Industrial Drift Mastery',  type: 'DRIFT EVENT',     startT: 0.88, checkpoints: 4, timeLimit: 75,  targetSpeed: 0,   reward: 15000, desc: 'Slide through the Industrial Port & Downtown corners to complete 4 drift gates.' }
+];
+
 const REALISTIC_TIERS = {
   0: { name: 'REALISTIC // MOBILE BALANCED', dpr: 1.35, res: 0.9,  shadow: true, map: 1024, every: 2, spots: 'night', tail: false, trees: 0.65, traffic: 10, rain: 0.6, glass: false, coat: true, bump: false, far: 2400 },
   1: { name: 'REALISTIC // HIGH PBR',        dpr: 1.85, res: 1.0,  shadow: true, map: 1536, every: 1, spots: true,    tail: true,  trees: 0.90, traffic: 14, rain: 0.85, glass: false, coat: true, bump: true,  far: 3000 },
@@ -595,6 +695,11 @@ class UltimateDriveSimulator {
       credits: 125000,
       upgrades: { engine: 0, brakes: 0, susp: 0, nitro: 1 },
       garageTab: 'style',
+      selectedVehicleId: 'm4_comp',
+      previewVehicleId: 'm4_comp',
+      unlockedVehicles: ['m4_comp', 'm2_cs', 'm8_gt'],
+      completedMissions: [],
+      discoveredLandmarks: ['lm_city'],
       mpCallsign: 'RR_PILOT_01',
       mpRoom: 'BMW-884',
       mpMode: 'convoy', // 'convoy' | 'sprint' | 'overtake'
@@ -638,6 +743,17 @@ class UltimateDriveSimulator {
     this.audio = new AutomotiveAudioEngine();
     this.traffic = [];
     this.rivals = [];
+    this.npcs = [];
+    this.worldChunks = [];
+    this.missionBeacons = [];
+    this.activeMission = null;
+    this.nearbyMission = null;
+    this.countdownTimer = 0;
+    this.gpsWaypoint = null;
+    this.selectedMapZone = 'city';
+    this.peerInstance = null;
+    this.peerConnections = new Map();
+    this.mpHeartbeatAcc = 0;
     this.mpPeers = new Map();
     this.mpChannel = null;
     this.mpBroadcastAcc = 0;
@@ -715,8 +831,19 @@ class UltimateDriveSimulator {
   detectInitialHardwareTier() {
     const cores = navigator.hardwareConcurrency || 4;
     const mem = navigator.deviceMemory || 4;
+    try {
+      const c = document.createElement('canvas');
+      const gl = c.getContext('webgl2') || c.getContext('webgl');
+      if (gl) {
+        const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+        const rendererStr = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '') : '';
+        if (/Mali-G52|Mali-G57|Mali-G68|Adreno \(TM\) 61|PowerVR/i.test(rendererStr)) {
+          return 0; // Realme 9i 5G (Mali-G57 MC2) & mid-range mobile GPUs get locked 60 FPS Tier 0 profile
+        }
+      }
+    } catch (_) {}
     if (!IS_MOBILE && cores >= 8 && mem >= 8) return 2;
-    if (IS_MOBILE && (cores <= 4 || mem <= 3)) return 0;
+    if (IS_MOBILE) return mem >= 8 && cores >= 8 ? 1 : 0;
     return 1;
   }
 
@@ -787,6 +914,16 @@ class UltimateDriveSimulator {
       }
       if (typeof d.mpCallsign === 'string' && d.mpCallsign.trim()) this.state.mpCallsign = d.mpCallsign.trim().slice(0, 16);
       if (typeof d.mpRoom === 'string' && d.mpRoom.trim()) this.state.mpRoom = d.mpRoom.trim().slice(0, 10);
+      if (typeof d.selectedVehicleId === 'string' && VEHICLE_CATALOG.some((v) => v.id === d.selectedVehicleId)) {
+        this.state.selectedVehicleId = d.selectedVehicleId;
+        this.state.previewVehicleId = d.selectedVehicleId;
+      }
+      if (Array.isArray(d.unlockedVehicles)) {
+        this.state.unlockedVehicles = Array.from(new Set(['m4_comp', 'm2_cs', 'm8_gt', ...d.unlockedVehicles]));
+      }
+      if (Array.isArray(d.completedMissions)) this.state.completedMissions = d.completedMissions;
+      if (Array.isArray(d.discoveredLandmarks)) this.state.discoveredLandmarks = Array.from(new Set(['lm_city', ...d.discoveredLandmarks]));
+      if (typeof d.preset === 'string') this.state.preset = d.preset;
       if (typeof d.audioEnabled === 'boolean') this.audio.enabled = d.audioEnabled;
       if (typeof d.masterVolume === 'number') this.audio.masterVolume = THREE.MathUtils.clamp(d.masterVolume, 0, 1);
       if (typeof d.engineVolume === 'number') this.audio.engineVolume = THREE.MathUtils.clamp(d.engineVolume, 0, 1);
@@ -826,6 +963,11 @@ class UltimateDriveSimulator {
         upgrades: this.state.upgrades,
         mpCallsign: this.state.mpCallsign,
         mpRoom: this.state.mpRoom,
+        selectedVehicleId: this.state.selectedVehicleId,
+        unlockedVehicles: this.state.unlockedVehicles,
+        completedMissions: this.state.completedMissions,
+        discoveredLandmarks: this.state.discoveredLandmarks,
+        preset: this.state.preset,
         audioEnabled: this.audio.enabled,
         masterVolume: this.audio.masterVolume,
         engineVolume: this.audio.engineVolume,
@@ -908,7 +1050,13 @@ class UltimateDriveSimulator {
       return;
     }
 
-    if (cur === 'SETTINGS') {
+    const mmEl = $(UI.missionModal);
+    if (mmEl && !mmEl.classList.contains('hidden')) {
+      show(UI.missionModal, false);
+      return;
+    }
+
+    if (cur === 'SETTINGS' || cur === 'MULTIPLAYER' || cur === 'WORLD_MAP' || cur === 'MISSIONS') {
       this.saveSettings();
       this.popToPreviousScreen();
       return;
@@ -933,9 +1081,18 @@ class UltimateDriveSimulator {
     show(UI.menu, screen === 'MAIN_MENU');
     show(UI.garage, screen === 'GARAGE');
     show(UI.mpScreen, screen === 'MULTIPLAYER');
+    show(UI.worldMapScreen, screen === 'WORLD_MAP');
+    show(UI.missionsScreen, screen === 'MISSIONS');
     show(UI.settings, screen === 'SETTINGS');
     show(UI.pauseMenu, screen === 'PAUSE');
     show(UI.hud, screen === 'DRIVING');
+
+    if (this.rivals) {
+      const showRivals = screen !== 'GARAGE';
+      this.rivals.forEach((r) => { if (r.mesh) r.mesh.visible = showRivals; });
+    }
+    if (screen === 'WORLD_MAP') this.drawInteractiveWorldMap();
+    if (screen === 'MISSIONS') this.renderMissionsGrid();
 
     if (this.garageRing) {
       this.garageRing.visible = (screen === 'GARAGE' || screen === 'MAIN_MENU');
@@ -952,6 +1109,8 @@ class UltimateDriveSimulator {
     if (screen === 'GARAGE') {
       this.pendingPaintHex = this.state.paintHex;
       this.pendingPaintName = this.state.paintName;
+      this.state.previewVehicleId = this.state.selectedVehicleId;
+      this.renderVehicleCarousel();
       this.updateGarageStatsUI();
     }
   }
@@ -1540,39 +1699,50 @@ class UltimateDriveSimulator {
   }
 
   spawnTraffic(count) {
-    const trafficColors = [0xd8dee9, 0x2e3440, 0x5e81ac, 0xbf616a, 0x4c566a, 0xebcb8b];
+    const trafficColors = [0xd8dee9, 0x168bff, 0x5e81ac, 0xbf616a, 0x2e3440, 0xebcb8b, 0x125432];
+    const vehicleTypes = [
+      { type: 'sedan',  w: 1.86, h: 0.62, l: 4.45, cw: 1.54, ch: 0.46, cl: 2.10, spd: 16.5 },
+      { type: 'suv',    w: 2.02, h: 0.78, l: 4.72, cw: 1.72, ch: 0.58, cl: 2.65, spd: 14.8 },
+      { type: 'coupe',  w: 1.92, h: 0.54, l: 4.32, cw: 1.48, ch: 0.40, cl: 1.78, spd: 19.5 },
+      { type: 'van',    w: 2.08, h: 1.15, l: 5.10, cw: 1.96, ch: 0.72, cl: 3.40, spd: 12.8 }
+    ];
     for (let i = 0; i < count; i++) {
+      const vt = vehicleTypes[i % vehicleTypes.length];
       const group = new THREE.Group();
       const mat = new THREE.MeshStandardMaterial({
         color: trafficColors[i % trafficColors.length],
-        metalness: 0.72,
-        roughness: 0.24
+        metalness: 0.75,
+        roughness: 0.22
       });
-      const chassis = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.65, 4.35), mat);
-      chassis.position.y = 0.55;
+      const chassis = new THREE.Mesh(new THREE.BoxGeometry(vt.w, vt.h, vt.l), mat);
+      chassis.position.y = vt.h * 0.5 + 0.22;
       chassis.castShadow = true;
       group.add(chassis);
 
       const cabin = new THREE.Mesh(
-        new THREE.BoxGeometry(1.55, 0.48, 2.1),
-        new THREE.MeshStandardMaterial({ color: 0x11151c, roughness: 0.1 })
+        new THREE.BoxGeometry(vt.cw, vt.ch, vt.cl),
+        new THREE.MeshStandardMaterial({ color: 0x0d131c, roughness: 0.08, metalness: 0.8 })
       );
-      cabin.position.set(0, 1.05, -0.2);
+      cabin.position.set(0, vt.h + vt.ch * 0.42 + 0.18, -0.15);
       group.add(cabin);
 
-      const hl = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.12, 0.08), new THREE.MeshBasicMaterial({ color: 0xdff6ff }));
-      hl.position.set(0, 0.58, 2.18);
+      const hl = new THREE.Mesh(new THREE.BoxGeometry(vt.w * 0.82, 0.11, 0.08), new THREE.MeshBasicMaterial({ color: 0xdff6ff }));
+      hl.position.set(0, vt.h * 0.55 + 0.22, vt.l * 0.5 + 0.01);
       group.add(hl);
 
-      const tl = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.12, 0.08), new THREE.MeshBasicMaterial({ color: 0xff1111 }));
-      tl.position.set(0, 0.62, -2.18);
+      const tlMat = new THREE.MeshBasicMaterial({ color: 0xaa1111 });
+      const tl = new THREE.Mesh(new THREE.BoxGeometry(vt.w * 0.82, 0.12, 0.08), tlMat);
+      tl.position.set(0, vt.h * 0.62 + 0.22, -vt.l * 0.5 - 0.01);
       group.add(tl);
 
       this.scene.add(group);
       this.traffic.push({
+        type: vt.type,
         mesh: group,
-        t: (i / count + 0.06) % 1.0,
-        speed: 14 + (i % 4) * 2.6,
+        tlMat,
+        t: (i / count + 0.04) % 1.0,
+        baseSpeed: vt.spd + (i % 3) * 1.4,
+        speed: vt.spd,
         laneOffset: i % 2 === 0 ? 3.8 : -3.8,
         dir: i % 2 === 0 ? 1 : -1
       });
@@ -1583,7 +1753,7 @@ class UltimateDriveSimulator {
   // VEHICLE, GARAGE TURNTABLE RING & WEATHER PARTICLES
   // --------------------------------------------------------------------------
   buildVehicle() {
-    this.carRig = buildProceduralBMW();
+    this.carRig = buildProceduralBMW(this.state.selectedVehicleId || 'm4_comp');
     this.carRig.root.rotation.order = 'YXZ';
     this.scene.add(this.carRig.root);
     this.buildBlobShadow();
@@ -1656,11 +1826,13 @@ class UltimateDriveSimulator {
 
   updateGarageStatsUI() {
     const u = this.state.upgrades || { engine: 0, brakes: 0, susp: 0, nitro: 1 };
+    const curId = this.state.previewVehicleId || this.state.selectedVehicleId || 'm4_comp';
+    const spec = VEHICLE_CATALOG.find((v) => v.id === curId) || VEHICLE_CATALOG[0];
     const isMph = this.state.units === 'mph';
-    const topKmh = 300 + u.engine * 15;
+    const topKmh = spec.topSpeedKmh + u.engine * 14;
     const topDisp = isMph ? `${Math.round(topKmh * 0.621371)} MPH` : `${topKmh} KM/H`;
-    const accelSec = (3.5 - u.engine * 0.22 - u.nitro * 0.06).toFixed(1);
-    const hp = 510 + u.engine * 65 + u.nitro * 15;
+    const accelSec = Math.max(2.1, spec.accel0to100 - u.engine * 0.18 - u.nitro * 0.05).toFixed(1);
+    const hp = spec.hp + u.engine * 65 + u.nitro * 15;
 
     setText(UI.garageCredits, `${this.state.credits.toLocaleString()} CR`);
     setText(UI.garageHpBadge, `${hp} HP`);
@@ -1863,9 +2035,11 @@ class UltimateDriveSimulator {
   applyRealisticTier(tierIndex, keepCustomRes = false) {
     const clampedTier = THREE.MathUtils.clamp(tierIndex, 0, 2);
     this.hwTier = clampedTier;
-    const CFG = REALISTIC_TIERS[clampedTier];
+    const presetKey = this.state.preset || 'realistic';
+    const CFG = (presetKey !== 'realistic' && GRAPHICS_PRESET_PROFILES[presetKey])
+      ? GRAPHICS_PRESET_PROFILES[presetKey]
+      : REALISTIC_TIERS[clampedTier];
     this.cfg = CFG;
-    this.state.preset = 'realistic';
 
     if (!keepCustomRes) {
       this.state.resScale = CFG.res;
@@ -1954,7 +2128,8 @@ class UltimateDriveSimulator {
   }
 
   teleportToZone(zone) {
-    const t = (this.zoneSpawn && this.zoneSpawn[zone]) ?? 0;
+    const mapT = { city: 0.02, festival: 0.18, countryside: 0.34, highway: 0.50, mountain: 0.50, coast: 0.74, industrial: 0.89 };
+    const t = mapT[zone] !== undefined ? mapT[zone] : ((this.zoneSpawn && this.zoneSpawn[zone]) ?? 0);
     const pt = this.roadCurve.getPointAt(t);
     const tan = this.roadCurve.getTangentAt(t);
     const p = this.physics;
@@ -1974,15 +2149,21 @@ class UltimateDriveSimulator {
   }
 
   zoneName(t) {
-    if (t < this.zoneT.city) return 'DOWNTOWN CORE';
-    if (t < this.zoneT.mountain) return 'MOUNTAIN HIGHWAY';
-    return 'COASTAL ROUTE';
+    if (t < 0.14) return 'DOWNTOWN METROPOLIS';
+    if (t < 0.27) return 'HORIZON FESTIVAL GROUNDS';
+    if (t < 0.44) return 'EMERALD FOREST & VILLAGE';
+    if (t < 0.62) return 'ALPINE MOUNTAIN PASS';
+    if (t < 0.82) return 'AZURE COASTAL LAKEFRONT';
+    return 'INDUSTRIAL PORT & DRIFT YARD';
   }
 
   zoneShortName(t) {
-    if (t < this.zoneT.city) return 'City';
-    if (t < this.zoneT.mountain) return 'Mountain';
-    return 'Coast';
+    if (t < 0.14) return 'City';
+    if (t < 0.27) return 'Festival';
+    if (t < 0.44) return 'Forest';
+    if (t < 0.62) return 'Mountain';
+    if (t < 0.82) return 'Coast';
+    return 'Industrial';
   }
 
   // --------------------------------------------------------------------------
@@ -2043,6 +2224,29 @@ class UltimateDriveSimulator {
       g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
     }
 
+    // Draw GPS Waypoint line & Mission Markers on Minimap
+    if (this.gpsWaypoint) {
+      const [wx, wy] = this.mmPoint(this.gpsWaypoint.x, this.gpsWaypoint.z);
+      g.strokeStyle = '#168BFF';
+      g.lineWidth = 2.5;
+      g.setLineDash([4, 4]);
+      g.beginPath();
+      g.moveTo(m.w / 2, m.h / 2);
+      g.lineTo(wx, wy);
+      g.stroke();
+      g.setLineDash([]);
+      g.fillStyle = '#00f5d4';
+      g.beginPath();
+      g.arc(wx, wy, 4.2, 0, Math.PI * 2);
+      g.fill();
+    }
+    if (this.missionBeacons) {
+      g.fillStyle = '#168BFF';
+      for (const mb of this.missionBeacons) {
+        const [mx, my] = this.mmPoint(mb.pt.x, mb.pt.z);
+        g.fillRect(mx - 2.5, my - 2.5, 5, 5);
+      }
+    }
     // Draw AI Convoy Rivals & P2P Peers on Minimap
     g.fillStyle = '#ff385c';
     for (const r of this.rivals) {
@@ -2329,7 +2533,8 @@ class UltimateDriveSimulator {
     this.bindChips('#time-select .chip-btn', 'time', (v) => { this.state.timeOfDay = v; this.applyEnvironmentState(); this.saveSettings(); });
     this.bindChips('#weather-select .chip-btn', 'weather', (v) => { this.state.weather = v; this.applyEnvironmentState(); this.saveSettings(); });
     this.bindChips('#spawn-select .chip-btn', 'spawn', (v) => { this.state.spawn = v; this.teleportToZone(v); this.saveSettings(); });
-    this.bindChips('#preset-select .chip-btn', 'preset', () => {
+    this.bindChips('#preset-select .chip-btn', 'preset', (v) => {
+      this.state.preset = v || 'realistic';
       this.dynScale = 1.0;
       this.applyRealisticTier(this.hwTier, false);
       this.saveSettings();
@@ -3168,17 +3373,545 @@ class UltimateDriveSimulator {
   // --------------------------------------------------------------------------
 
   // --------------------------------------------------------------------------
-  // PHASE 2: GARAGE TUNING, CREDITS, MULTIPLAYER P2P/CONVOY & EVENT MODES
+  // PHASE 2 ULTIMATE EVOLUTION: BIOMES, NPCS, VEHICLES, MISSIONS, MAP & P2P/WEBRTC
   // --------------------------------------------------------------------------
+  disposeObject3D(obj) {
+    if (!obj) return;
+    obj.traverse((child) => {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        mats.forEach((m) => m && m.dispose && m.dispose());
+      }
+    });
+  }
+
   initPhase2Systems() {
     this.setRimColor(this.state.rimHex, false);
     this.setCaliperColor(this.state.caliperHex, false);
     this.setUnderglow(this.state.underglowHex, false);
-    this.updateGarageStatsUI();
+    this.buildOpenWorldBiomesAndChunks();
+    this.buildNPCPopulation(32);
+    this.buildMissionBeacons();
     this.spawnConvoyRivals(this.state.mpRivalCount);
     this.buildSprintCheckpoints();
     this.connectMultiplayerChannel(this.state.mpRoom);
+    this.renderVehicleCarousel();
+    this.updateGarageStatsUI();
     this.renderMultiplayerRoster();
+    this.renderMissionsGrid();
+
+    window.addEventListener('beforeunload', () => {
+      this.sendMultiplayerPacket({ type: 'leave', id: this.clientId });
+    });
+  }
+
+  // --- SECTION 4: 6-BIOME OPEN WORLD & CHUNK STREAMING ---
+  buildOpenWorldBiomesAndChunks() {
+    this.worldChunks = [];
+    const S = this.roadSamples;
+    if (!S || !S.length) return;
+
+    // Create 12 spatial chunks along the road loop for distance-based streaming
+    const numChunks = 12;
+    for (let c = 0; c < numChunks; c++) {
+      const group = new THREE.Group();
+      const centerSample = S[Math.floor((c / numChunks) * S.length)];
+      this.scene.add(group);
+      this.worldChunks.push({ index: c, center: centerSample.pt.clone(), group });
+    }
+
+    const getChunkGroup = (t) => {
+      const idx = Math.min(numChunks - 1, Math.floor(t * numChunks));
+      return this.worldChunks[idx].group;
+    };
+
+    // 1. Horizon Festival Grounds (t = 0.14 .. 0.26): Electric-blue Festival Arches & Grandstands
+    const archGeo = new THREE.TorusGeometry(11.5, 0.38, 10, 32, Math.PI);
+    const archMat = new THREE.MeshBasicMaterial({ color: 0x168bff });
+    for (const ft of [0.16, 0.19, 0.22, 0.25]) {
+      const pt = this.roadCurve.getPointAt(ft);
+      const tan = this.roadCurve.getTangentAt(ft);
+      const arch = new THREE.Mesh(archGeo, archMat);
+      arch.position.copy(pt);
+      arch.rotation.y = Math.atan2(tan.x, tan.z);
+      getChunkGroup(ft).add(arch);
+    }
+
+    // 2. Emerald Forest & Countryside Village Cottages (t = 0.29 .. 0.43)
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0xd8cfc2, roughness: 0.85 });
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x7a3b2e, roughness: 0.75 });
+    for (let i = 0; i < 14; i++) {
+      const vt = 0.30 + (i / 14) * 0.12;
+      const pt = this.roadCurve.getPointAt(vt);
+      const tan = this.roadCurve.getTangentAt(vt);
+      const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+      const side = i % 2 === 0 ? 1 : -1;
+      const house = new THREE.Group();
+      const base = new THREE.Mesh(new THREE.BoxGeometry(6.5, 3.8, 5.2), wallMat);
+      base.position.y = 1.9;
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(5.2, 2.4, 4).rotateY(Math.PI / 4), roofMat);
+      roof.position.y = 4.9;
+      house.add(base, roof);
+      house.position.copy(pt).addScaledVector(right, side * (this.halfRoad + 14 + (i % 3) * 4));
+      house.rotation.y = Math.atan2(tan.x, tan.z);
+      getChunkGroup(vt).add(house);
+    }
+
+    // 3. Industrial Port & Shipping Container Yard (t = 0.84 .. 0.96)
+    const containerColors = [0x168bff, 0xc0392b, 0x27ae60, 0xd35400, 0x2c3e50];
+    const contGeo = new THREE.BoxGeometry(2.6, 2.7, 6.2);
+    for (let i = 0; i < 24; i++) {
+      const it = 0.85 + (i / 24) * 0.10;
+      const pt = this.roadCurve.getPointAt(it);
+      const tan = this.roadCurve.getTangentAt(it);
+      const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+      const side = i % 2 === 0 ? 1 : -1;
+      const cMat = new THREE.MeshStandardMaterial({ color: containerColors[i % containerColors.length], metalness: 0.55, roughness: 0.45 });
+      const box = new THREE.Mesh(contGeo, cMat);
+      const stackH = (i % 3 === 0) ? 4.05 : 1.35;
+      box.position.copy(pt).addScaledVector(right, side * (this.halfRoad + 11 + (i % 4) * 3.2));
+      box.position.y = pt.y + stackH;
+      box.rotation.y = Math.atan2(tan.x, tan.z);
+      getChunkGroup(it).add(box);
+    }
+
+    // 4. Discoverable Landmark Beacons
+    this.landmarkMeshes = [];
+    const lmGeo = new THREE.CylinderGeometry(0.45, 0.45, 16, 12);
+    const lmMat = new THREE.MeshBasicMaterial({ color: 0xff4d6d, transparent: true, opacity: 0.42, depthWrite: false });
+    OPEN_WORLD_LANDMARKS.forEach((lm) => {
+      const pt = this.roadCurve.getPointAt(lm.t);
+      const tan = this.roadCurve.getTangentAt(lm.t);
+      const right = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+      const pos = pt.clone().addScaledVector(right, this.halfRoad + 5.5);
+      const pillar = new THREE.Mesh(lmGeo, lmMat);
+      pillar.position.copy(pos);
+      pillar.position.y += 8.0;
+      getChunkGroup(lm.t).add(pillar);
+      this.landmarkMeshes.push({ lm, pos, pillar });
+    });
+  }
+
+  updateWorldStreaming() {
+    const pPos = this.physics.pos;
+    const streamRadius = (this.cfg && this.cfg.far) ? Math.min(950, this.cfg.far * 0.42) : 720;
+    for (const chunk of this.worldChunks) {
+      const d = pPos.distanceTo(chunk.center);
+      chunk.group.visible = d <= streamRadius;
+    }
+
+    // Check Landmark Discovery
+    if (this.landmarkMeshes) {
+      for (const item of this.landmarkMeshes) {
+        if (!this.state.discoveredLandmarks.includes(item.lm.id)) {
+          if (pPos.distanceTo(item.pos) < 38) {
+            this.state.discoveredLandmarks.push(item.lm.id);
+            this.audio.playRewardChime();
+            this.addCredits(2500, `LANDMARK DISCOVERED: ${item.lm.name.toUpperCase()} • +2,500 CR`);
+            setText(UI.mapDiscoveredLabel, `LANDMARKS DISCOVERED: ${this.state.discoveredLandmarks.length} / ${OPEN_WORLD_LANDMARKS.length}`);
+            this.saveSettings();
+          }
+        }
+      }
+    }
+  }
+
+  // --- SECTION 5: BELIEVABLE ANIMATED NPC PEDESTRIANS ---
+  buildNPCPopulation(maxCount = 32) {
+    this.npcs.forEach((n) => {
+      this.scene.remove(n.rig.root);
+      this.disposeObject3D(n.rig.root);
+    });
+    this.npcs = [];
+    const shirts = [0x168bff, 0xe63946, 0x2a9d8f, 0xf4a261, 0xe9c46a, 0x8ecae6, 0xffffff];
+    const pants = [0x151d29, 0x264653, 0x1d3557, 0x2b2d42];
+    const skins = [0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524];
+
+    for (let i = 0; i < maxCount; i++) {
+      const rig = buildNPCPedestrian(shirts[i % shirts.length], pants[i % pants.length], skins[i % skins.length]);
+      this.scene.add(rig.root);
+      // Distribute NPCs across City, Festival Grounds, and Village sidewalks
+      const zoneSlots = [0.02, 0.05, 0.09, 0.13, 0.17, 0.21, 0.24, 0.33, 0.37, 0.74, 0.89];
+      const baseT = (zoneSlots[i % zoneSlots.length] + (i * 0.004)) % 1.0;
+      this.npcs.push({
+        rig,
+        t: baseT,
+        dir: i % 2 === 0 ? 1 : -1,
+        side: i % 2 === 0 ? 1 : -1,
+        walkSpeed: 1.35 + (i % 4) * 0.22,
+        phase: i * 1.1
+      });
+    }
+  }
+
+  updateNPCs(dt) {
+    const pPos = this.physics.pos;
+    const maxActive = (this.cfg && this.cfg.npcs) ? this.cfg.npcs : 20;
+    for (let i = 0; i < this.npcs.length; i++) {
+      const npc = this.npcs[i];
+      if (i >= maxActive) {
+        npc.rig.root.visible = false;
+        continue;
+      }
+      const pt = this.roadCurve.getPointAt(npc.t);
+      const distPlayer = Math.hypot(pPos.x - pt.x, pPos.z - pt.z);
+      if (distPlayer > 140) {
+        npc.rig.root.visible = false;
+        continue;
+      }
+      npc.rig.root.visible = true;
+
+      // Collision awareness: step back & pause if player car approaches within 7.5m
+      const tan = this.roadCurve.getTangentAt(npc.t);
+      const rx = -tan.z, rz = tan.x;
+      const sidewalkOffset = this.halfRoad + 2.3;
+      const wx = pt.x + rx * npc.side * sidewalkOffset;
+      const wz = pt.z + rz * npc.side * sidewalkOffset;
+      const dCar = Math.hypot(pPos.x - wx, pPos.z - wz);
+
+      if (dCar < 7.5 && Math.abs(this.physics.speedKmh) > 5) {
+        // Evade away from road edge and face car
+        npc.rig.root.position.set(wx + rx * npc.side * 1.2, pt.y + 0.1, wz + rz * npc.side * 1.2);
+        npc.rig.root.rotation.y = Math.atan2(pPos.x - wx, pPos.z - wz);
+        npc.rig.leftLeg.rotation.x = 0;
+        npc.rig.rightLeg.rotation.x = 0;
+      } else {
+        npc.t = (npc.t + (npc.dir * npc.walkSpeed * dt) / this.roadLength + 1) % 1;
+        npc.phase += dt * npc.walkSpeed * 5.2;
+        const swing = Math.sin(npc.phase) * 0.48;
+        npc.rig.leftLeg.rotation.x = swing;
+        npc.rig.rightLeg.rotation.x = -swing;
+        npc.rig.leftArm.rotation.x = -swing * 0.75;
+        npc.rig.rightArm.rotation.x = swing * 0.75;
+        npc.rig.root.position.set(wx, pt.y + 0.1, wz);
+        npc.rig.root.rotation.y = Math.atan2(tan.x * npc.dir, tan.z * npc.dir);
+      }
+    }
+  }
+
+  // --- SECTION 8: RACE-MASTER STYLE MULTI-VEHICLE SELECTION & SWITCHING ---
+  renderVehicleCarousel() {
+    const strip = $(UI.vehicleCarousel);
+    if (!strip) return;
+    const unlocked = this.state.unlockedVehicles || ['m4_comp', 'm2_cs', 'm8_gt'];
+    const curId = this.state.previewVehicleId || this.state.selectedVehicleId;
+
+    strip.innerHTML = VEHICLE_CATALOG.map((v) => {
+      const isUnlocked = unlocked.includes(v.id);
+      const isSelected = v.id === curId;
+      const statusTxt = isUnlocked
+        ? (v.id === this.state.selectedVehicleId ? 'EQUIPPED' : 'OWNED')
+        : `LOCKED &bull; ${v.price.toLocaleString()} CR`;
+      return `
+        <button class="vehicle-card-pill ${isSelected ? 'active' : ''}" data-car-id="${escapeHTML(v.id)}" type="button">
+          <small>${escapeHTML(v.category)}</small>
+          <strong>${escapeHTML(v.name.replace('BMW ', '').replace('RR ', ''))}</strong>
+          <span>${statusTxt}</span>
+        </button>
+      `;
+    }).join('');
+
+    strip.querySelectorAll('.vehicle-card-pill').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this.previewGarageVehicle(btn.dataset.carId);
+      });
+    });
+
+    const spec = VEHICLE_CATALOG.find((v) => v.id === curId) || VEHICLE_CATALOG[0];
+    setText('garage-car-title', `${spec.name} (${spec.category})`);
+    const selBtn = $(UI.garageSelect);
+    if (selBtn) {
+      const span = selBtn.querySelector('span');
+      const isUnl = unlocked.includes(spec.id);
+      if (span) {
+        span.textContent = isUnl ? 'SELECT & DRIVE' : `UNLOCK (${spec.price.toLocaleString()} CR)`;
+      }
+    }
+  }
+
+  previewGarageVehicle(vehicleId) {
+    const spec = VEHICLE_CATALOG.find((v) => v.id === vehicleId);
+    if (!spec) return;
+    this.state.previewVehicleId = spec.id;
+    this.audio.playEngineStart(spec.engineAudio);
+    this.rebuildPlayerVehicleMesh(spec.id, false);
+    this.renderVehicleCarousel();
+    this.updateGarageStatsUI();
+  }
+
+  rebuildPlayerVehicleMesh(vehicleId, commitSelection = true) {
+    const spec = VEHICLE_CATALOG.find((v) => v.id === vehicleId) || VEHICLE_CATALOG[0];
+    if (commitSelection) {
+      this.state.selectedVehicleId = spec.id;
+      this.state.previewVehicleId = spec.id;
+      this.audio.engineProfile = spec.engineAudio || 'I6_TURBO';
+    }
+    const oldPos = this.carRig ? this.carRig.root.position.clone() : new THREE.Vector3();
+    const oldRot = this.carRig ? this.carRig.root.rotation.clone() : new THREE.Euler();
+
+    if (this.carRig && this.carRig.root) {
+      this.scene.remove(this.carRig.root);
+      this.disposeObject3D(this.carRig.root);
+    }
+
+    this.carRig = buildProceduralBMW(spec);
+    this.carRig.root.rotation.order = 'YXZ';
+    this.carRig.root.position.copy(oldPos);
+    this.carRig.root.rotation.copy(oldRot);
+    this.scene.add(this.carRig.root);
+
+    this.buildBlobShadow();
+    this.buildGarageFloorRing();
+    if (this.garageRing) {
+      this.garageRing.visible = (this.state.screen === 'GARAGE' || this.state.screen === 'MAIN_MENU');
+    }
+    this.applyCarTextures();
+    this.setPaint(this.pendingPaintHex || spec.defaultPaint, this.pendingPaintName || spec.defaultPaintName, commitSelection);
+    this.setRimColor(this.state.rimHex, false);
+    this.setCaliperColor(this.state.caliperHex, false);
+    this.setUnderglow(this.state.underglowHex, false);
+    this.setHeadlights(this.state.headlightsOn);
+  }
+
+  // --- SECTION 7: PLAYABLE OPEN-WORLD MISSION & FESTIVAL EVENT SYSTEM ---
+  buildMissionBeacons() {
+    this.missionBeacons = [];
+    const ringGeo = new THREE.CylinderGeometry(3.6, 3.6, 0.35, 24);
+    const pillarGeo = new THREE.CylinderGeometry(3.2, 3.2, 11.0, 20, 1, true);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x168bff });
+    const pillarMat = new THREE.MeshBasicMaterial({ color: 0x168bff, transparent: true, opacity: 0.26, side: THREE.DoubleSide, depthWrite: false });
+
+    MISSION_CATALOG.forEach((m) => {
+      const pt = this.roadCurve.getPointAt(m.startT);
+      const group = new THREE.Group();
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.y = 0.25;
+      const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+      pillar.position.y = 5.6;
+      group.add(ring, pillar);
+      group.position.copy(pt);
+      this.scene.add(group);
+      this.missionBeacons.push({ mission: m, pt: pt.clone(), group });
+    });
+  }
+
+  renderMissionsGrid() {
+    const grid = $(UI.missionsGrid);
+    if (!grid) return;
+    const done = this.state.completedMissions || [];
+    setText(UI.missionsProgress, `${done.length} / ${MISSION_CATALOG.length} COMPLETED`);
+
+    grid.innerHTML = MISSION_CATALOG.map((m) => {
+      const isDone = done.includes(m.id);
+      return `
+        <div class="mission-event-card">
+          <div>
+            <div class="mission-card-top">
+              <span class="mission-type-badge">${escapeHTML(m.type)}</span>
+              <span class="mission-reward-badge">+${m.reward.toLocaleString()} CR ${isDone ? '&#10003;' : ''}</span>
+            </div>
+            <h4>${escapeHTML(m.title)}</h4>
+            <p>${escapeHTML(m.desc)}</p>
+          </div>
+          <div class="mission-card-actions">
+            <button class="chip-btn active btn-start-mission" data-mid="${escapeHTML(m.id)}" type="button">START EVENT</button>
+            <button class="chip-btn btn-gps-mission" data-mid="${escapeHTML(m.id)}" type="button">SET GPS</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    grid.querySelectorAll('.btn-start-mission').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this.audio.playUIClick(true);
+        this.launchMissionById(btn.dataset.mid, true);
+      });
+    });
+    grid.querySelectorAll('.btn-gps-mission').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const m = MISSION_CATALOG.find((x) => x.id === btn.dataset.mid);
+        if (m) {
+          const pt = this.roadCurve.getPointAt(m.startT);
+          this.gpsWaypoint = { x: pt.x, z: pt.z, label: m.title };
+          this.audio.playRewardChime();
+          this.requestImmersiveFullscreen();
+          this.resumeDriving();
+          this.addCredits(0, `GPS SET TO ${m.title.toUpperCase()}`);
+        }
+      });
+    });
+  }
+
+  launchMissionById(missionId, teleportToStart = true) {
+    const m = MISSION_CATALOG.find((x) => x.id === missionId);
+    if (!m) return;
+    this.requestImmersiveFullscreen();
+    if (teleportToStart) {
+      const pt = this.roadCurve.getPointAt(m.startT);
+      const tan = this.roadCurve.getTangentAt(m.startT);
+      this.physics.pos.copy(pt);
+      this.physics.vel.set(0, 0, 0);
+      this.physics.heading = Math.atan2(tan.x, tan.z);
+    }
+
+    // Build mission checkpoints along road starting from m.startT
+    this.checkpoints.forEach((cp) => { cp.mesh.visible = false; });
+    const count = Math.min(this.checkpoints.length, m.checkpoints || 6);
+    for (let i = 0; i < count; i++) {
+      const t = (m.startT + ((i + 1) * 0.055)) % 1.0;
+      const pt = this.roadCurve.getPointAt(t);
+      const tan = this.roadCurve.getTangentAt(t);
+      this.checkpoints[i].t = t;
+      this.checkpoints[i].pt.copy(pt);
+      this.checkpoints[i].mesh.position.copy(pt);
+      this.checkpoints[i].mesh.position.y += 0.2;
+      this.checkpoints[i].mesh.rotation.y = Math.atan2(tan.x, tan.z);
+      this.checkpoints[i].mesh.visible = (i === 0);
+    }
+
+    this.activeMission = {
+      spec: m,
+      totalCP: count,
+      cpIndex: 0,
+      timeRemaining: m.timeLimit,
+      elapsed: 0,
+      maxSpeedReached: 0
+    };
+    this.sprintActive = false;
+    this.countdownTimer = 3.2;
+    this.gpsWaypoint = { x: this.checkpoints[0].pt.x, z: this.checkpoints[0].pt.z, label: `${m.title} CP 1` };
+
+    setText(UI.hudEventMode, m.type);
+    setText(UI.hudEventStatus, `${m.title.toUpperCase()} • GET READY!`);
+    show(UI.hudMissionPrompt, false);
+    this.state.started = true;
+    show(UI.cont, true);
+    this.resumeDriving();
+  }
+
+  completeActiveMission() {
+    if (!this.activeMission) return;
+    const m = this.activeMission.spec;
+    const elapsed = this.activeMission.elapsed;
+    this.activeMission = null;
+    this.gpsWaypoint = null;
+    this.checkpoints.forEach((cp) => { cp.mesh.visible = false; });
+
+    if (!this.state.completedMissions.includes(m.id)) {
+      this.state.completedMissions.push(m.id);
+    }
+    this.audio.playRewardChime();
+    this.addCredits(m.reward, `${m.title.toUpperCase()} COMPLETE • +${m.reward.toLocaleString()} CR!`);
+    this.saveSettings();
+
+    setText(UI.mmStatName, m.title);
+    setText(UI.mmStatTime, `${elapsed.toFixed(1)}s`);
+    setText(UI.mmStatReward, `+${m.reward.toLocaleString()} CR`);
+    setText(UI.mmStatBalance, `${this.state.credits.toLocaleString()} CR`);
+    show(UI.missionModal, true);
+  }
+
+  // --- SECTION 14: INTERACTIVE OPEN-WORLD MAP & GPS WAYPOINT ROUTING ---
+  drawInteractiveWorldMap() {
+    const canvas = $(UI.worldMapCanvas);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    ctx.fillStyle = '#080B10';
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle topographic grid
+    ctx.strokeStyle = 'rgba(22, 139, 255, 0.08)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+    const S = this.roadSamples;
+    if (!S || !S.length) return;
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (const s of S) {
+      if (s.pt.x < minX) minX = s.pt.x;
+      if (s.pt.x > maxX) maxX = s.pt.x;
+      if (s.pt.z < minZ) minZ = s.pt.z;
+      if (s.pt.z > maxZ) maxZ = s.pt.z;
+    }
+    const pad = 42;
+    const scaleX = (W - pad * 2) / Math.max(1, maxX - minX);
+    const scaleZ = (H - pad * 2) / Math.max(1, maxZ - minZ);
+    const sc = Math.min(scaleX, scaleZ);
+    const ox = W * 0.5 - ((minX + maxX) * 0.5) * sc;
+    const oy = H * 0.5 - ((minZ + maxZ) * 0.5) * sc;
+    this._mapTransform = { sc, ox, oy };
+    const toMap = (wx, wz) => [ox + wx * sc, oy + wz * sc];
+
+    // Draw Connected Highway Loop
+    ctx.strokeStyle = 'rgba(22, 139, 255, 0.28)';
+    ctx.lineWidth = 12;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    S.forEach((s, idx) => {
+      const [mx, my] = toMap(s.pt.x, s.pt.z);
+      if (idx === 0) ctx.moveTo(mx, my);
+      else ctx.lineTo(mx, my);
+    });
+    ctx.closePath();
+    ctx.stroke();
+
+    ctx.strokeStyle = '#d8e4f2';
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+
+    // Draw GPS Waypoint Line if active
+    const p = this.physics.pos;
+    const [px, py] = toMap(p.x, p.z);
+    if (this.gpsWaypoint) {
+      const [wx, wy] = toMap(this.gpsWaypoint.x, this.gpsWaypoint.z);
+      ctx.strokeStyle = '#00f5d4';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([7, 5]);
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(wx, wy);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#00f5d4';
+      ctx.beginPath();
+      ctx.arc(wx, wy, 6.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Draw Landmark Markers
+    OPEN_WORLD_LANDMARKS.forEach((lm) => {
+      const pt = this.roadCurve.getPointAt(lm.t);
+      const [lx, ly] = toMap(pt.x, pt.z);
+      ctx.fillStyle = '#ff4d6d';
+      ctx.beginPath();
+      ctx.arc(lx, ly, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#9BA8B8';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText(lm.name, lx + 8, ly + 3);
+    });
+
+    // Draw Mission Start Markers
+    MISSION_CATALOG.forEach((m) => {
+      const pt = this.roadCurve.getPointAt(m.startT);
+      const [mx, my] = toMap(pt.x, pt.z);
+      ctx.fillStyle = '#ffb800';
+      ctx.beginPath();
+      ctx.arc(mx, my, 5.0, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Draw Player Marker
+    ctx.fillStyle = '#168BFF';
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(px, py, 7.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
   }
 
   setRimColor(hex, save = true) {
@@ -3220,7 +3953,7 @@ class UltimateDriveSimulator {
     if (cur >= 3) return;
     const cost = baseCost * (cur + 1);
     if (this.state.credits < cost) {
-      setText(UI.glbStatus, `Insufficient Credits! Need ${cost.toLocaleString()} CR (Earn CR by driving & overtaking).`);
+      setText(UI.glbStatus, `Insufficient Credits! Need ${cost.toLocaleString()} CR (Earn CR in Missions & Overtakes).`);
       this.audio.playUIClick(false);
       return;
     }
@@ -3233,13 +3966,13 @@ class UltimateDriveSimulator {
   }
 
   addCredits(amount, reasonText) {
-    this.state.credits += Math.round(amount);
+    if (amount > 0) this.state.credits += Math.round(amount);
     setText(UI.garageCredits, `${this.state.credits.toLocaleString()} CR`);
     setText(UI.hudSessionCredits, `${this.state.credits.toLocaleString()} CR`);
     if (reasonText) {
       setText(UI.hudSkillToast, reasonText);
       show(UI.hudSkillToast, true);
-      this.toastTimer = 2.1;
+      this.toastTimer = 2.2;
     }
   }
 
@@ -3254,16 +3987,18 @@ class UltimateDriveSimulator {
     if (this.rivals.length > 0) {
       this.rivals.forEach((r) => {
         this.scene.remove(r.mesh);
+        this.disposeObject3D(r.mesh);
         if (r.tagEl && r.tagEl.parentNode) r.tagEl.parentNode.removeChild(r.tagEl);
       });
       this.rivals = [];
     }
     const callsigns = ['M4_GT3_APEX', 'G82_NITRO_KING', 'RR_SHADOW_M', 'M3_COMP_TOUR', 'CSL_MEISTER'];
-    const colors = ['#b8141c', '#e5a914', '#125432', '#7b1fa2', '#e2e6eb'];
+    const colors = ['#168BFF', '#b8141c', '#e5a914', '#125432', '#7b1fa2'];
     const layer = $(UI.mpNametags);
 
     for (let i = 0; i < count; i++) {
       const { group } = buildRivalBMWCoupe(colors[i % colors.length]);
+      group.visible = this.state.screen !== 'GARAGE';
       this.scene.add(group);
       let tagEl = null;
       if (layer) {
@@ -3290,7 +4025,7 @@ class UltimateDriveSimulator {
     this.checkpoints = [];
     const totalCP = 8;
     const ringGeo = new THREE.TorusGeometry(6.8, 0.24, 10, 28, Math.PI);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x00d8ff, transparent: true, opacity: 0.78 });
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0x168bff, transparent: true, opacity: 0.82 });
     for (let i = 0; i < totalCP; i++) {
       const t = ((i + 1) / (totalCP + 1)) * 0.92;
       const pt = this.roadCurve.getPointAt(t);
@@ -3305,34 +4040,144 @@ class UltimateDriveSimulator {
     }
   }
 
+  // --- SECTION 16: CROSS-DEVICE WEBRTC (PEERJS) + BROADCASTCHANNEL MULTIPLAYER ---
   connectMultiplayerChannel(roomCode) {
-    const cleanRoom = (roomCode || 'BMW-884').trim().toUpperCase();
+    const cleanRoom = String(roomCode || 'BMW-884').replace(/[^a-zA-Z0-9\-]/g, '').toUpperCase().slice(0, 10) || 'BMW-884';
     this.state.mpRoom = cleanRoom;
+    this.state.mpCallsign = sanitizeCallsign(this.state.mpCallsign);
+    if (!this.clientId) this.clientId = 'p_' + Math.random().toString(36).slice(2, 9);
+
     if (this.mpChannel) {
       try { this.mpChannel.close(); } catch (_) {}
       this.mpChannel = null;
     }
     this.mpPeers.forEach((peer) => {
-      if (peer.mesh) this.scene.remove(peer.mesh);
+      if (peer.mesh) {
+        this.scene.remove(peer.mesh);
+        this.disposeObject3D(peer.mesh);
+      }
       if (peer.tagEl && peer.tagEl.parentNode) peer.tagEl.parentNode.removeChild(peer.tagEl);
     });
     this.mpPeers.clear();
 
+    // 1. Same-Device / Multi-Tab BroadcastChannel Transport
     if (typeof BroadcastChannel !== 'undefined') {
       try {
         this.mpChannel = new BroadcastChannel(`rr_studios_mp_${cleanRoom}`);
         this.mpChannel.onmessage = (ev) => this.onMultiplayerMessage(ev.data);
       } catch (_) {}
     }
+
+    // 2. Cross-Device WebRTC PeerJS DataChannel Transport (connects separate Android phones over internet!)
+    this.initWebRTCPeerRoom(cleanRoom);
+
+    // Immediately broadcast join presence packet
+    this.broadcastTelemetryPacket('hello');
     setText(UI.mpStatusPill, `ROOM ${cleanRoom} • P2P + ${this.rivals.length} AI M-RIVALS`);
     this.renderMultiplayerRoster();
   }
 
+  initWebRTCPeerRoom(cleanRoom) {
+    if (typeof window.Peer === 'undefined') return;
+    if (this.peerInstance) {
+      try { this.peerInstance.destroy(); } catch (_) {}
+      this.peerInstance = null;
+    }
+    this.peerConnections.clear();
+
+    const hostPeerId = `rr-studios-bmw-room-${cleanRoom.toLowerCase()}-host`;
+    try {
+      const peer = new window.Peer(hostPeerId);
+      this.peerInstance = peer;
+      peer.on('open', () => {
+        setText(UI.mpStatusPill, `ROOM ${cleanRoom} • WEBRTC HOST ONLINE`);
+      });
+      peer.on('connection', (conn) => {
+        this.setupWebRTCConn(conn);
+      });
+      peer.on('error', (err) => {
+        if (err && err.type === 'unavailable-id') {
+          // Host already exists on another device! Connect as client peer to hostPeerId
+          try { peer.destroy(); } catch (_) {}
+          const clientPeer = new window.Peer();
+          this.peerInstance = clientPeer;
+          clientPeer.on('open', () => {
+            const conn = clientPeer.connect(hostPeerId, { reliable: false });
+            this.setupWebRTCConn(conn);
+            setText(UI.mpStatusPill, `ROOM ${cleanRoom} • WEBRTC PEER CONNECTED`);
+          });
+          clientPeer.on('connection', (c) => this.setupWebRTCConn(c));
+        }
+      });
+    } catch (_) {}
+  }
+
+  setupWebRTCConn(conn) {
+    if (!conn) return;
+    conn.on('open', () => {
+      this.peerConnections.set(conn.peer, conn);
+      this.broadcastTelemetryPacket('hello');
+    });
+    conn.on('data', (data) => {
+      this.onMultiplayerMessage(data);
+      // If we are host, relay packet to other connected WebRTC peers
+      this.peerConnections.forEach((otherConn, pid) => {
+        if (pid !== conn.peer && otherConn.open) {
+          try { otherConn.send(data); } catch (_) {}
+        }
+      });
+    });
+    conn.on('close', () => {
+      this.peerConnections.delete(conn.peer);
+    });
+  }
+
+  sendMultiplayerPacket(pkt) {
+    if (this.mpChannel) {
+      try { this.mpChannel.postMessage(pkt); } catch (_) {}
+    }
+    this.peerConnections.forEach((conn) => {
+      if (conn && conn.open) {
+        try { conn.send(pkt); } catch (_) {}
+      }
+    });
+  }
+
+  broadcastTelemetryPacket(type = 'state') {
+    if (!this.clientId) this.clientId = 'p_' + Math.random().toString(36).slice(2, 9);
+    const p = this.physics;
+    this.sendMultiplayerPacket({
+      type,
+      id: this.clientId,
+      callsign: sanitizeCallsign(this.state.mpCallsign),
+      paintHex: sanitizeHex(this.state.paintHex),
+      pos: [Number(p.pos.x.toFixed(2)), Number(p.pos.y.toFixed(2)), Number(p.pos.z.toFixed(2))],
+      heading: Number(p.heading.toFixed(3)),
+      steerAngle: Number((p.steerAngle || 0).toFixed(3)),
+      speedKmh: Math.round(Math.abs(p.speedKmh)),
+      braking: Boolean(this.input.brake || this.input.handbrake),
+      boosting: Boolean(this.input.nitro && p.nitro > 1.5)
+    });
+  }
+
   onMultiplayerMessage(msg) {
     if (!msg || !msg.id || msg.id === this.clientId) return;
+    if (msg.type === 'leave') {
+      const dead = this.mpPeers.get(msg.id);
+      if (dead) {
+        if (dead.mesh) { this.scene.remove(dead.mesh); this.disposeObject3D(dead.mesh); }
+        if (dead.tagEl && dead.tagEl.parentNode) dead.tagEl.parentNode.removeChild(dead.tagEl);
+        this.mpPeers.delete(msg.id);
+        this.renderMultiplayerRoster();
+      }
+      return;
+    }
+
+    const safeCallsign = sanitizeCallsign(msg.callsign || 'MP_PEER');
+    const safeColor = sanitizeHex(msg.paintHex, '#168BFF');
     let peer = this.mpPeers.get(msg.id);
     if (!peer) {
-      const { group, paintMat } = buildRivalBMWCoupe(msg.paintHex || '#00a8ff');
+      const { group, paintMat, tailMat } = buildRivalBMWCoupe(safeColor);
       this.scene.add(group);
       let tagEl = null;
       const layer = $(UI.mpNametags);
@@ -3341,37 +4186,81 @@ class UltimateDriveSimulator {
         tagEl.className = 'mp-nametag-pill';
         layer.appendChild(tagEl);
       }
-      peer = { id: msg.id, callsign: msg.callsign || 'MP_PEER', color: msg.paintHex || '#00a8ff', mesh: group, paintMat, tagEl, speedKmh: 0, lastSeen: performance.now() };
+      peer = {
+        id: msg.id,
+        callsign: safeCallsign,
+        color: safeColor,
+        mesh: group,
+        paintMat,
+        tailMat,
+        tagEl,
+        targetPos: new THREE.Vector3(),
+        targetHeading: 0,
+        speedKmh: 0,
+        lastSeen: performance.now()
+      };
+      if (Array.isArray(msg.pos) && msg.pos.length === 3) {
+        peer.mesh.position.set(msg.pos[0], msg.pos[1], msg.pos[2]);
+        peer.targetPos.copy(peer.mesh.position);
+      }
       this.mpPeers.set(msg.id, peer);
       this.renderMultiplayerRoster();
+      if (msg.type === 'hello') this.broadcastTelemetryPacket('state');
     }
     peer.lastSeen = performance.now();
-    peer.callsign = msg.callsign || peer.callsign;
-    peer.speedKmh = msg.speedKmh || 0;
-    if (msg.pos) peer.mesh.position.set(msg.pos[0], msg.pos[1], msg.pos[2]);
-    if (typeof msg.heading === 'number') peer.mesh.rotation.y = msg.heading;
+    peer.callsign = safeCallsign;
+    peer.speedKmh = Number(msg.speedKmh) || 0;
+    if (Array.isArray(msg.pos) && msg.pos.length === 3) {
+      peer.targetPos.set(Number(msg.pos[0]) || 0, Number(msg.pos[1]) || 0, Number(msg.pos[2]) || 0);
+    }
+    if (typeof msg.heading === 'number') peer.targetHeading = msg.heading;
+    if (peer.tailMat) peer.tailMat.color.setHex(msg.braking ? 0xff3333 : 0xaa1111);
+  }
+
+  updateMultiplayerLobbyHeartbeat(dt) {
+    this.mpHeartbeatAcc += dt;
+    if (this.mpHeartbeatAcc >= 1.0) {
+      this.mpHeartbeatAcc = 0;
+      this.broadcastTelemetryPacket('heartbeat');
+      this.evictStaleMultiplayerPeers();
+    }
+  }
+
+  evictStaleMultiplayerPeers() {
+    const now = performance.now();
+    let changed = false;
+    this.mpPeers.forEach((peer, id) => {
+      if (now - peer.lastSeen > 6500) {
+        if (peer.mesh) { this.scene.remove(peer.mesh); this.disposeObject3D(peer.mesh); }
+        if (peer.tagEl && peer.tagEl.parentNode) peer.tagEl.parentNode.removeChild(peer.tagEl);
+        this.mpPeers.delete(id);
+        changed = true;
+      }
+    });
+    if (changed) this.renderMultiplayerRoster();
   }
 
   renderMultiplayerRoster() {
     const list = $(UI.mpRosterList);
     if (!list) return;
     const rows = [];
-    const hp = 510 + this.state.upgrades.engine * 65 + this.state.upgrades.nitro * 15;
+    const spec = VEHICLE_CATALOG.find((v) => v.id === this.state.selectedVehicleId) || VEHICLE_CATALOG[0];
+    const hp = spec.hp + this.state.upgrades.engine * 65 + this.state.upgrades.nitro * 15;
     rows.push(`
       <div class="mp-driver-row">
         <div class="mp-driver-left">
-          <span class="mp-color-dot" style="background:${this.state.paintHex};"></span>
-          <span class="mp-driver-tag">${this.state.mpCallsign} (YOU)</span>
+          <span class="mp-color-dot" style="background:${escapeHTML( sanitizeHex(this.state.paintHex) )};"></span>
+          <span class="mp-driver-tag">${escapeHTML(sanitizeCallsign(this.state.mpCallsign))} (YOU)</span>
         </div>
-        <span class="mp-driver-meta">${hp} HP &bull; HOST</span>
+        <span class="mp-driver-meta">${hp} HP &bull; ${escapeHTML(spec.name.split(' ').slice(0, 2).join(' '))}</span>
       </div>
     `);
     this.mpPeers.forEach((peer) => {
       rows.push(`
         <div class="mp-driver-row">
           <div class="mp-driver-left">
-            <span class="mp-color-dot" style="background:${peer.color};"></span>
-            <span class="mp-driver-tag">${peer.callsign}</span>
+            <span class="mp-color-dot" style="background:${escapeHTML(sanitizeHex(peer.color))};"></span>
+            <span class="mp-driver-tag">${escapeHTML(sanitizeCallsign(peer.callsign))}</span>
           </div>
           <span class="mp-driver-meta">LIVE P2P PEER</span>
         </div>
@@ -3381,8 +4270,8 @@ class UltimateDriveSimulator {
       rows.push(`
         <div class="mp-driver-row">
           <div class="mp-driver-left">
-            <span class="mp-color-dot" style="background:${r.color};"></span>
-            <span class="mp-driver-tag">${r.callsign}</span>
+            <span class="mp-color-dot" style="background:${escapeHTML(sanitizeHex(r.color))};"></span>
+            <span class="mp-driver-tag">${escapeHTML(sanitizeCallsign(r.callsign))}</span>
           </div>
           <span class="mp-driver-meta">${r.hp} HP &bull; AI M-RIVAL</span>
         </div>
@@ -3396,6 +4285,7 @@ class UltimateDriveSimulator {
 
   startPhase2EventMode(mode) {
     this.state.mpMode = mode;
+    this.activeMission = null;
     this.checkpoints.forEach((cp, idx) => {
       cp.mesh.visible = (mode === 'sprint' && idx === 0);
     });
@@ -3413,7 +4303,7 @@ class UltimateDriveSimulator {
     } else {
       this.sprintActive = false;
       setText(UI.hudEventMode, `CONVOY • ROOM ${this.state.mpRoom}`);
-      setText(UI.hudEventStatus, `${1 + this.mpPeers.size + this.rivals.length} M-DRIVERS ON HIGHWAY`);
+      setText(UI.hudEventStatus, `${1 + this.mpPeers.size + this.rivals.length} DRIVERS IN OPEN WORLD`);
     }
   }
 
@@ -3421,7 +4311,20 @@ class UltimateDriveSimulator {
     const p = this.physics;
     const kmh = Math.abs(p.speedKmh);
 
-    // 1. Update Toast visibility timer
+    // 0. Update Open-World Chunk Streaming & Animated NPC Pedestrians
+    if (this.frame % 10 === 0) this.updateWorldStreaming();
+    this.updateNPCs(dt);
+
+    // 1. Countdown Overlay (3 - 2 - 1 - GO!)
+    if (this.countdownTimer > 0) {
+      this.countdownTimer -= dt;
+      show(UI.hudCountdown, true);
+      const sec = Math.ceil(this.countdownTimer);
+      setText(UI.hudCountdown, sec > 0 ? String(sec) : 'GO!');
+      if (this.countdownTimer <= 0) show(UI.hudCountdown, false);
+    }
+
+    // 2. Update Toast & Combo timers
     if (this.toastTimer > 0) {
       this.toastTimer -= dt;
       if (this.toastTimer <= 0) show(UI.hudSkillToast, false);
@@ -3431,24 +4334,26 @@ class UltimateDriveSimulator {
       if (this.overtakeTimer <= 0) this.overtakeCombo = 1;
     }
 
-    // 2. Broadcast P2P Multiplayer Telemetry at 20 Hz
+    // 3. Broadcast P2P Multiplayer Telemetry at 20 Hz + Smooth 60 FPS Peer Interpolation
     this.mpBroadcastAcc += dt;
-    if (this.mpChannel && this.mpBroadcastAcc >= 0.05) {
+    if (this.mpBroadcastAcc >= 0.05) {
       this.mpBroadcastAcc = 0;
-      if (!this.clientId) this.clientId = 'p_' + Math.random().toString(36).slice(2, 9);
-      try {
-        this.mpChannel.postMessage({
-          id: this.clientId,
-          callsign: this.state.mpCallsign,
-          paintHex: this.state.paintHex,
-          pos: [Number(p.pos.x.toFixed(2)), Number(p.pos.y.toFixed(2)), Number(p.pos.z.toFixed(2))],
-          heading: Number(p.heading.toFixed(3)),
-          speedKmh: Math.round(kmh)
-        });
-      } catch (_) {}
+      this.broadcastTelemetryPacket('state');
     }
+    this.mpHeartbeatAcc += dt;
+    if (this.mpHeartbeatAcc >= 1.5) {
+      this.mpHeartbeatAcc = 0;
+      this.evictStaleMultiplayerPeers();
+    }
+    this.mpPeers.forEach((peer) => {
+      if (peer.mesh && peer.targetPos) {
+        peer.mesh.position.lerp(peer.targetPos, Math.min(1, dt * 12));
+        const diff = ((peer.targetHeading - peer.mesh.rotation.y + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+        peer.mesh.rotation.y += diff * Math.min(1, dt * 12);
+      }
+    });
 
-    // 3. Update Autonomous M-Series Convoy Rivals & Near-Miss Overtake Detection
+    // 4. Update Autonomous M-Series Convoy Rivals
     for (const r of this.rivals) {
       if (r.overtakenCooldown > 0) r.overtakenCooldown -= dt;
       const dynamicSpeed = r.baseSpeed + Math.sin(this.clock.elapsedTime * 0.7 + r.hp) * 4.0;
@@ -3471,7 +4376,7 @@ class UltimateDriveSimulator {
       }
     }
 
-    // Near-miss against regular traffic
+    // Near-miss against traffic
     for (const tr of this.traffic) {
       if (tr.nearCooldown > 0) tr.nearCooldown -= dt;
       const d = Math.hypot(p.pos.x - tr.mesh.position.x, p.pos.z - tr.mesh.position.z);
@@ -3484,18 +4389,78 @@ class UltimateDriveSimulator {
       }
     }
 
-    // Power Drift skill credit accumulation
+    // Power Drift credit accumulation
     if (kmh > 45 && p.slipRatio > 0.34) {
       this.driftAcc = (this.driftAcc || 0) + dt;
       if (this.driftAcc >= 1.1) {
         this.driftAcc = 0;
-        this.addCredits(200, 'M-POWER DRIFT • +200 CR');
+        this.addCredits(200, 'HORIZON DRIFT • +200 CR');
       }
     } else {
       this.driftAcc = 0;
     }
 
-    // 4. Update Highway Sprint Checkpoint Race
+    // 5. Check Open-World Mission Beacons Proximity
+    if (!this.activeMission && !this.sprintActive && this.missionBeacons) {
+      let foundMission = null;
+      for (const mb of this.missionBeacons) {
+        mb.group.rotation.y += dt * 1.4;
+        if (p.pos.distanceTo(mb.pt) < 15.0) {
+          foundMission = mb.mission;
+          break;
+        }
+      }
+      this.nearbyMission = foundMission;
+      if (foundMission) {
+        setText(UI.hudMissionPrompt, `START ${foundMission.title.toUpperCase()} [F]`);
+        show(UI.hudMissionPrompt, true);
+      } else {
+        show(UI.hudMissionPrompt, false);
+      }
+    }
+
+    // 6. Update Active Open-World Mission Progression
+    if (this.activeMission) {
+      const am = this.activeMission;
+      am.elapsed += dt;
+      am.timeRemaining = Math.max(0, am.timeRemaining - dt);
+      if (kmh > am.maxSpeedReached) am.maxSpeedReached = kmh;
+
+      const cp = this.checkpoints[am.cpIndex];
+      if (cp) {
+        cp.mesh.rotation.z = Math.sin(this.clock.elapsedTime * 3.5) * 0.1;
+        const dist = Math.hypot(p.pos.x - cp.pt.x, p.pos.z - cp.pt.z);
+        if (dist < 14.5) {
+          cp.mesh.visible = false;
+          this.audio.playRewardChime();
+          am.cpIndex++;
+          if (am.cpIndex >= am.totalCP) {
+            if (am.spec.targetSpeed > 0 && am.maxSpeedReached < am.spec.targetSpeed) {
+              this.addCredits(2000, `REACHED ${Math.round(am.maxSpeedReached)}/${am.spec.targetSpeed} KM/H • +2,000 CR`);
+              this.activeMission = null;
+              this.gpsWaypoint = null;
+            } else {
+              this.completeActiveMission();
+            }
+          } else {
+            this.checkpoints[am.cpIndex].mesh.visible = true;
+            this.gpsWaypoint = { x: this.checkpoints[am.cpIndex].pt.x, z: this.checkpoints[am.cpIndex].pt.z, label: `CP ${am.cpIndex + 1}` };
+            this.addCredits(500, `CHECKPOINT ${am.cpIndex}/${am.totalCP} • +500 CR`);
+          }
+        }
+      }
+      if (this.activeMission) {
+        setText(UI.hudEventStatus, `CP ${am.cpIndex + 1}/${am.totalCP} • TIME LEFT ${am.timeRemaining.toFixed(1)}s`);
+        if (am.timeRemaining <= 0) {
+          this.activeMission = null;
+          this.gpsWaypoint = null;
+          this.checkpoints.forEach((c) => { c.mesh.visible = false; });
+          setText(UI.hudEventStatus, 'MISSION TIME EXPIRED • TRY AGAIN FROM MISSIONS MENU');
+        }
+      }
+    }
+
+    // 7. Update Highway Sprint Checkpoint Race
     if (this.sprintActive && this.checkpoints.length > 0) {
       this.sprintTime += dt;
       const cp = this.checkpoints[this.sprintIndex];
@@ -3527,7 +4492,10 @@ class UltimateDriveSimulator {
     if (!this.camera) return;
     const W = window.innerWidth, H = window.innerHeight;
     const projectActor = (mesh, tagEl, label, spdKmh) => {
-      if (!tagEl || !mesh) return;
+      if (!tagEl || !mesh || !mesh.visible) {
+        if (tagEl) tagEl.style.display = 'none';
+        return;
+      }
       const dx = mesh.position.x - this.physics.pos.x;
       const dz = mesh.position.z - this.physics.pos.z;
       const dist = Math.hypot(dx, dz);
@@ -3546,7 +4514,7 @@ class UltimateDriveSimulator {
       tagEl.style.display = 'block';
       tagEl.style.left = `${sx.toFixed(1)}px`;
       tagEl.style.top = `${sy.toFixed(1)}px`;
-      tagEl.innerHTML = `${label} <b>${Math.round(spdKmh)} KM/H &bull; ${Math.round(dist)}m</b>`;
+      tagEl.innerHTML = `${escapeHTML(sanitizeCallsign(label))} <b>${Math.round(spdKmh)} KM/H &bull; ${Math.round(dist)}m</b>`;
     };
 
     for (const r of this.rivals) {
@@ -3558,6 +4526,132 @@ class UltimateDriveSimulator {
   }
 
   bindPhase2UIEvents() {
+    // Main Menu OPEN WORLD & MISSIONS buttons
+    on(UI.openMap, 'click', () => {
+      this.audio.playUIClick(true);
+      this.navigateTo('WORLD_MAP');
+    });
+    on(UI.openMissions, 'click', () => {
+      this.audio.playUIClick(true);
+      this.navigateTo('MISSIONS');
+    });
+    on(UI.hudMapBtn, 'click', () => {
+      this.audio.playUIClick(false);
+      this.navigateTo('WORLD_MAP');
+    });
+    const mmRing = document.querySelector('.minimap-ring');
+    if (mmRing) {
+      mmRing.addEventListener('click', () => {
+        this.audio.playUIClick(false);
+        this.navigateTo('WORLD_MAP');
+      });
+    }
+
+    // World Map Screen events & Interactive Canvas Click-to-Set-GPS
+    on(UI.mapHome, 'click', () => { this.audio.playUIClick(false); this.popToPreviousScreen(); });
+    on(UI.mapBack, 'click', () => { this.audio.playUIClick(false); this.popToPreviousScreen(); });
+    on(UI.mapClearWp, 'click', () => {
+      this.audio.playUIClick(false);
+      this.gpsWaypoint = null;
+      this.drawInteractiveWorldMap();
+    });
+    this.bindChips('#map-zone-buttons .chip-btn', 'mapZone', (zone) => {
+      this.selectedMapZone = zone;
+      const lm = OPEN_WORLD_LANDMARKS.find((l) => l.zone === zone) || OPEN_WORLD_LANDMARKS[0];
+      setText(UI.mapSelectedZone, lm.name.toUpperCase());
+      setText(UI.mapPoiTitle, lm.name.toUpperCase());
+      setText(UI.mapPoiDesc, lm.desc);
+      const pt = this.roadCurve.getPointAt(lm.t);
+      this.gpsWaypoint = { x: pt.x, z: pt.z, label: lm.name };
+      this.drawInteractiveWorldMap();
+    });
+    on(UI.mapFastTravel, 'click', () => {
+      this.audio.playRewardChime();
+      this.teleportToZone(this.selectedMapZone || 'city');
+      this.requestImmersiveFullscreen();
+      if (!this.state.started) {
+        this.startGame(true);
+      } else {
+        this.resumeDriving();
+      }
+    });
+    const mapCanvas = $(UI.worldMapCanvas);
+    if (mapCanvas) {
+      mapCanvas.addEventListener('click', (e) => {
+        if (!this._mapTransform) return;
+        const rect = mapCanvas.getBoundingClientRect();
+        const cx = (e.clientX - rect.left) * (mapCanvas.width / Math.max(1, rect.width));
+        const cy = (e.clientY - rect.top) * (mapCanvas.height / Math.max(1, rect.height));
+        const wx = (cx - this._mapTransform.ox) / this._mapTransform.sc;
+        const wz = (cy - this._mapTransform.oy) / this._mapTransform.sc;
+        this.gpsWaypoint = { x: wx, z: wz, label: 'CUSTOM GPS PIN' };
+        this.audio.playUIClick(true);
+        setText(UI.mapSelectedZone, 'CUSTOM GPS WAYPOINT');
+        this.drawInteractiveWorldMap();
+      });
+    }
+
+    // Missions Hub & Mission Complete Modal
+    on(UI.missionsHome, 'click', () => { this.audio.playUIClick(false); this.popToPreviousScreen(); });
+    on(UI.missionsBack, 'click', () => { this.audio.playUIClick(false); this.popToPreviousScreen(); });
+    on(UI.missionsFreeroam, 'click', () => {
+      this.audio.playUIClick(true);
+      this.requestImmersiveFullscreen();
+      if (!this.state.started) this.startGame(true);
+      else this.resumeDriving();
+    });
+    on(UI.btnMissionClaim, 'click', () => {
+      this.audio.playUIClick(true);
+      show(UI.missionModal, false);
+    });
+    on(UI.hudMissionPrompt, 'click', () => {
+      if (this.nearbyMission) this.launchMissionById(this.nearbyMission.id, false);
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyF' && this.state.screen === 'DRIVING' && this.nearbyMission && !this.activeMission) {
+        this.launchMissionById(this.nearbyMission.id, false);
+      }
+    });
+
+    // Race-Master Vehicle Carousel Prev/Next & Unlock/Equip in Garage
+    const cycleGarageCar = (dir) => {
+      const curId = this.state.previewVehicleId || this.state.selectedVehicleId;
+      const idx = VEHICLE_CATALOG.findIndex((v) => v.id === curId);
+      const nextIdx = (idx + dir + VEHICLE_CATALOG.length) % VEHICLE_CATALOG.length;
+      this.previewGarageVehicle(VEHICLE_CATALOG[nextIdx].id);
+    };
+    on(UI.carPrev, 'click', () => cycleGarageCar(-1));
+    on(UI.carNext, 'click', () => cycleGarageCar(1));
+
+    // Override Garage Select button to support Unlocking locked cars or Equipping owned cars
+    const gSel = $(UI.garageSelect);
+    if (gSel) {
+      gSel.addEventListener('click', (e) => {
+        const previewId = this.state.previewVehicleId || this.state.selectedVehicleId;
+        const spec = VEHICLE_CATALOG.find((v) => v.id === previewId) || VEHICLE_CATALOG[0];
+        const unlocked = this.state.unlockedVehicles || ['m4_comp', 'm2_cs', 'm8_gt'];
+        if (!unlocked.includes(spec.id)) {
+          e.stopImmediatePropagation();
+          if (this.state.credits < spec.price) {
+            this.audio.playUIClick(false);
+            setText(UI.glbStatus, `Need ${spec.price.toLocaleString()} CR to unlock ${spec.name}! Complete Missions to earn CR.`);
+            return;
+          }
+          this.state.credits -= spec.price;
+          this.state.unlockedVehicles.push(spec.id);
+          this.audio.playRewardChime();
+          this.rebuildPlayerVehicleMesh(spec.id, true);
+          this.renderVehicleCarousel();
+          this.updateGarageStatsUI();
+          this.saveSettings();
+          setText(UI.glbStatus, `UNLOCKED & EQUIPPED ${spec.name}!`);
+        } else {
+          this.rebuildPlayerVehicleMesh(spec.id, true);
+          this.saveSettings();
+        }
+      }, true);
+    }
+
     // Garage Style vs Performance Tuning Tabs
     const switchGarageTab = (tab) => {
       this.audio.playUIClick(false);
@@ -3590,7 +4684,7 @@ class UltimateDriveSimulator {
     on(UI.mpJoin, 'click', () => {
       this.audio.playRewardChime();
       const csEl = $(UI.mpCallsign), rmEl = $(UI.mpRoom);
-      if (csEl && csEl.value.trim()) this.state.mpCallsign = csEl.value.trim().toUpperCase();
+      if (csEl && csEl.value.trim()) this.state.mpCallsign = sanitizeCallsign(csEl.value);
       if (rmEl && rmEl.value.trim()) this.connectMultiplayerChannel(rmEl.value.trim());
       this.saveSettings();
     });
@@ -3619,7 +4713,7 @@ class UltimateDriveSimulator {
     on(UI.mpLaunch, 'click', () => {
       this.audio.playUIClick(true);
       const csEl = $(UI.mpCallsign), rmEl = $(UI.mpRoom);
-      if (csEl && csEl.value.trim()) this.state.mpCallsign = csEl.value.trim().toUpperCase();
+      if (csEl && csEl.value.trim()) this.state.mpCallsign = sanitizeCallsign(csEl.value);
       if (rmEl && rmEl.value.trim()) this.connectMultiplayerChannel(rmEl.value.trim());
       this.startPhase2EventMode(this.state.mpMode);
       this.requestImmersiveFullscreen();
@@ -3637,7 +4731,6 @@ class UltimateDriveSimulator {
     on(UI.hudHazard, 'click', () => this.toggleSignal('hazard'));
     on(UI.hudHorn, 'click', () => this.audio.playHorn());
 
-    // Bind M-Boost Nitro multi-touch button with pointer capture safety
     const nitroEl = $(UI.nitro);
     if (nitroEl) {
       const releaseNitro = () => {
@@ -3699,9 +4792,10 @@ class UltimateDriveSimulator {
     const gearTorqueMult = this.state.transMode === 'manual' && vl > gearTopMps * 1.03 ? 0.15 : 1.0;
 
     const upg = this.state.upgrades;
-    const engineMult = 1.0 + upg.engine * 0.095;
-    const topSpeedMps = 83.3 + upg.engine * 4.2;
-    const brakePower = 15.8 + upg.brakes * 1.9;
+    const vSpec = (this.carRig && this.carRig.spec && this.carRig.spec.physics) ? this.carRig.spec.physics : { accelMult: 1.0, topSpeedMps: 83.8, gripMult: 1.0, brakeMult: 1.0 };
+    const engineMult = (1.0 + upg.engine * 0.095) * (vSpec.accelMult || 1.0);
+    const topSpeedMps = (vSpec.topSpeedMps || 83.8) + upg.engine * 4.2;
+    const brakePower = (15.8 + upg.brakes * 1.9) * (vSpec.brakeMult || 1.0);
     const nitroThrust = (inp.nitro && p.nitro > 1.5 && vl >= 0) ? (4.8 + upg.nitro * 1.15) : 0;
 
     if (inp.nitro && p.nitro > 1.5 && vl >= 0) {
@@ -3741,7 +4835,8 @@ class UltimateDriveSimulator {
     _vLeft.set(_vForward.z, 0, -_vForward.x);
     let vlF = p.vel.dot(_vForward);
     let vlat = p.vel.dot(_vLeft);
-    let grip = (sim ? 5.6 : 9.2) * (1.0 + this.state.upgrades.susp * 0.08) * W.grip;
+    const vGrip = (this.carRig && this.carRig.spec && this.carRig.spec.physics) ? (this.carRig.spec.physics.gripMult || 1.0) : 1.0;
+    let grip = (sim ? 5.6 : 9.2) * (1.0 + this.state.upgrades.susp * 0.08) * vGrip * W.grip;
     if (inp.handbrake) grip = 1.15;
     grip = Math.max(grip, 12 * Math.max(0, 1 - p.vel.length() / 6));
     vlat *= Math.exp(-grip * dt);
@@ -3770,19 +4865,26 @@ class UltimateDriveSimulator {
     }
     p.pos.y = s.pt.y;
 
-    for (const tr of this.traffic) {
-      if (!tr.mesh.visible) continue;
-      const dx = p.pos.x - tr.mesh.position.x, dz = p.pos.z - tr.mesh.position.z;
+    const checkVehicleCollision = (otherPos, radius = 3.1) => {
+      const dx = p.pos.x - otherPos.x, dz = p.pos.z - otherPos.z;
       const d = Math.hypot(dx, dz);
-      if (d < 3.1 && d > 0.001) {
+      if (d < radius && d > 0.001) {
         const nx = dx / d, nz = dz / d;
-        p.pos.x += nx * (3.1 - d);
-        p.pos.z += nz * (3.1 - d);
+        p.pos.x += nx * (radius - d);
+        p.pos.z += nz * (radius - d);
+        const impact = Math.min(1, p.vel.length() / 25);
         p.vel.multiplyScalar(0.75);
         p.vel.x += nx * 2;
         p.vel.z += nz * 2;
+        this.audio.playCollisionSound(impact);
         this.haptic();
       }
+    };
+    for (const tr of this.traffic) {
+      if (tr.mesh.visible) checkVehicleCollision(tr.mesh.position, 3.1);
+    }
+    for (const r of this.rivals) {
+      if (r.mesh && r.mesh.visible) checkVehicleCollision(r.mesh.position, 3.0);
     }
 
     vlF = p.vel.dot(_vForward);
@@ -3839,8 +4941,34 @@ class UltimateDriveSimulator {
   }
 
   updateTraffic(dt) {
-    for (const tr of this.traffic) {
+    const pPos = this.physics.pos;
+    for (let i = 0; i < this.traffic.length; i++) {
+      const tr = this.traffic[i];
       if (!tr.mesh.visible) continue;
+
+      // Forward obstacle avoidance & braking (checks player proximity and ahead traffic in same lane)
+      let targetSpd = tr.baseSpeed;
+      let braking = false;
+      const dxP = pPos.x - tr.mesh.position.x;
+      const dzP = pPos.z - tr.mesh.position.z;
+      const distPlayer = Math.hypot(dxP, dzP);
+      if (distPlayer < 16.0) {
+        const fwdX = Math.sin(tr.mesh.rotation.y);
+        const fwdZ = Math.cos(tr.mesh.rotation.y);
+        const dotFwd = (dxP * fwdX + dzP * fwdZ) / Math.max(0.01, distPlayer);
+        if (dotFwd > 0.72) {
+          targetSpd = distPlayer < 8.5 ? 0 : tr.baseSpeed * 0.35;
+          braking = true;
+        }
+      }
+      // Slow slightly approaching city intersections
+      if (nearJunction(tr.mesh.position, 14)) {
+        targetSpd = Math.min(targetSpd, tr.baseSpeed * 0.65);
+      }
+
+      tr.speed += (targetSpd - tr.speed) * Math.min(1, dt * 5.0);
+      if (tr.tlMat) tr.tlMat.color.setHex(braking ? 0xff2222 : 0x991111);
+
       tr.t = (tr.t + (tr.dir * tr.speed * dt) / this.roadLength + 1) % 1;
       const pt = this.roadCurve.getPointAt(tr.t);
       const tan = this.roadCurve.getTangentAt(tr.t);
@@ -4124,6 +5252,7 @@ class UltimateDriveSimulator {
       this.accum = 0;
       this.physics.vel.multiplyScalar(Math.max(0, 1 - dt * 3));
       this.updateTraffic(dt);
+      this.updateMultiplayerLobbyHeartbeat(dt);
       this.updateParticles(dt);
     }
 
@@ -4142,6 +5271,7 @@ class UltimateDriveSimulator {
 
     const p = this.physics;
     const inMenu = this.state.mode !== 'DRIVING';
+    this.audio.interiorView = (this.state.screen === 'DRIVING' && this.state.cameraIndex === 4);
     this.audio.update(p.rpm, this.throttleVal, p.slipRatio, Math.abs(p.speedKmh), this.input.brake ? 1 : 0, inMenu);
 
     this.hudAcc += dt;
