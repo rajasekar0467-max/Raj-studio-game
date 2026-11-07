@@ -1342,3 +1342,309 @@ html, body {
     font-size: 0.62rem;
   }
 }
+
+
+/* ==========================================================================
+   PHASE 2 ULTIMATE EVOLUTION: CINEMATIC LUXURY + ELECTRIC BLUE (#168BFF)
+   ========================================================================== */
+:root {
+  --bg-primary: #080B10;
+  --bg-secondary: #111722;
+  --bg-card: #151D29;
+  --text-primary: #FFFFFF;
+  --text-secondary: #9BA8B8;
+  --accent-electric: #168BFF;
+}
+
+.aaa-menu-card.primary-play-card,
+.aaa-btn-primary,
+.chip-btn.active,
+.garage-tab-btn.active,
+.settings-tab-btn.active {
+  background: linear-gradient(135deg, #0d5ec4 0%, #168BFF 100%) !important;
+  border-color: #168BFF !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 0 18px rgba(22, 139, 255, 0.42);
+}
+
+.aaa-menu-card:hover,
+.aaa-menu-card:focus-visible {
+  border-color: #168BFF !important;
+  box-shadow: 0 6px 24px rgba(22, 139, 255, 0.28);
+}
+
+/* Race-Master Style Vehicle Selection Carousel in Garage */
+.vehicle-selector-bar {
+  position: absolute;
+  top: 66px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(17, 23, 34, 0.88);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(22, 139, 255, 0.38);
+  border-radius: 12px;
+  padding: 6px 10px;
+  z-index: 18;
+  max-width: min(820px, 76vw);
+}
+
+.car-nav-arrow {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: #151D29;
+  border: 1px solid rgba(22, 139, 255, 0.4);
+  color: #FFFFFF;
+  font-size: 0.9rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
+}
+
+.car-nav-arrow:hover {
+  background: #168BFF;
+}
+
+.vehicle-carousel-strip {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px;
+}
+
+.vehicle-carousel-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.vehicle-card-pill {
+  background: #151D29;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  padding: 6px 11px;
+  min-width: 118px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.vehicle-card-pill.active {
+  background: rgba(22, 139, 255, 0.22);
+  border-color: #168BFF;
+  box-shadow: 0 0 14px rgba(22, 139, 255, 0.4);
+}
+
+.vehicle-card-pill small {
+  font-size: 0.58rem;
+  font-weight: 800;
+  color: #168BFF;
+  letter-spacing: 0.08em;
+}
+
+.vehicle-card-pill strong {
+  font-size: 0.72rem;
+  color: #FFFFFF;
+  white-space: nowrap;
+}
+
+.vehicle-card-pill span {
+  font-size: 0.62rem;
+  color: #9BA8B8;
+  font-weight: 700;
+}
+
+/* Interactive Open-World Map Screen */
+.world-map-shell {
+  padding: 14px !important;
+}
+
+.world-map-grid {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.world-map-canvas-wrap {
+  position: relative;
+  background: #080B10;
+  border: 1px solid rgba(22, 139, 255, 0.45);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#world-map-canvas {
+  width: 100%;
+  height: auto;
+  max-height: 54vh;
+  cursor: crosshair;
+  display: block;
+}
+
+.map-legend-overlay {
+  position: absolute;
+  bottom: 8px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: rgba(8, 11, 16, 0.84);
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: #FFFFFF;
+  pointer-events: none;
+}
+
+.leg-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
+.leg-dot.player { background: #168BFF; box-shadow: 0 0 8px #168BFF; }
+.leg-dot.waypoint { background: #00f5d4; }
+.leg-dot.mission { background: #ffb800; }
+.leg-dot.landmark { background: #ff4d6d; }
+
+.world-map-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.map-zone-card {
+  background: #151D29;
+  border: 1px solid rgba(22, 139, 255, 0.3);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.map-card-tag {
+  font-size: 0.64rem;
+  font-weight: 800;
+  color: #168BFF;
+  letter-spacing: 0.1em;
+}
+
+.map-zone-card h3 {
+  margin: 4px 0 6px;
+  font-size: 1.02rem;
+  color: #FFFFFF;
+}
+
+.map-zone-card p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #9BA8B8;
+  line-height: 1.38;
+}
+
+.map-zones-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+/* Open-World Missions Grid */
+.missions-shell {
+  padding: 14px !important;
+  max-height: 64vh;
+  overflow-y: auto;
+}
+
+.missions-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
+  gap: 10px;
+}
+
+.mission-event-card {
+  background: #151D29;
+  border: 1px solid rgba(22, 139, 255, 0.28);
+  border-radius: 11px;
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 7px;
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.mission-event-card:hover {
+  border-color: #168BFF;
+  transform: translateY(-2px);
+}
+
+.mission-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.mission-type-badge {
+  font-size: 0.62rem;
+  font-weight: 900;
+  color: #168BFF;
+  background: rgba(22, 139, 255, 0.15);
+  padding: 2px 7px;
+  border-radius: 6px;
+  letter-spacing: 0.08em;
+}
+
+.mission-reward-badge {
+  font-size: 0.68rem;
+  font-weight: 900;
+  color: #ffd166;
+}
+
+.mission-event-card h4 {
+  margin: 2px 0;
+  font-size: 0.86rem;
+  color: #FFFFFF;
+}
+
+.mission-event-card p {
+  margin: 0;
+  font-size: 0.71rem;
+  color: #9BA8B8;
+  line-height: 1.3;
+}
+
+.mission-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .vehicle-selector-bar {
+    top: 48px;
+    padding: 3px 7px;
+  }
+  .vehicle-card-pill {
+    padding: 4px 8px;
+    min-width: 102px;
+  }
+  .world-map-grid {
+    grid-template-columns: 1.4fr 1fr;
+    gap: 8px;
+  }
+  .map-zone-card p {
+    display: none;
+  }
+}
