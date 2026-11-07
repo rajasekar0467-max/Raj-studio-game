@@ -2,9 +2,114 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 /**
- * Creates a procedural live iDrive digital cockpit display texture so the
- * interior screen shows real-time speed, gear, and RPM in Cockpit view.
+ * Complete Catalog of Playable Vehicles (Section 8: Sports, Supercar, Luxury, SUV, Off-Road, Performance)
+ * Each vehicle has distinct 3D geometry proportions, physics handling parameters, and engine audio profile.
  */
+export const VEHICLE_CATALOG = [
+  {
+    id: 'm4_comp',
+    name: 'BMW M4 G82 COMPETITION',
+    category: 'PERFORMANCE CAR',
+    hp: 510,
+    topSpeedKmh: 302,
+    accel0to100: 3.5,
+    handlingRating: 90,
+    brakingRating: 88,
+    price: 0,
+    unlockedDefault: true,
+    defaultPaint: '#0a2b6e',
+    defaultPaintName: 'Tanzanite Blue II',
+    engineAudio: 'I6_TURBO',
+    physics: { accelMult: 1.0, topSpeedMps: 83.8, gripMult: 1.0, offroadGrip: 0.72, brakeMult: 1.0, rideHeight: 0.0, camHeight: 0.0 },
+    dims: { width: 1.98, length: 4.66, beltH: 0.44, cabinH: 0.44, cabinZ: -0.22, cabinL: 1.88, wheelR: 0.36, roofStyle: 'coupe' }
+  },
+  {
+    id: 'm2_cs',
+    name: 'BMW M2 G87 CS TRACK',
+    category: 'SPORTS CAR',
+    hp: 480,
+    topSpeedKmh: 292,
+    accel0to100: 3.6,
+    handlingRating: 95,
+    brakingRating: 90,
+    price: 0,
+    unlockedDefault: true,
+    defaultPaint: '#b8141c',
+    defaultPaintName: 'Toronto Red Metallic',
+    engineAudio: 'I6_TURBO',
+    physics: { accelMult: 0.98, topSpeedMps: 81.1, gripMult: 1.10, offroadGrip: 0.74, brakeMult: 1.05, rideHeight: -0.01, camHeight: -0.02 },
+    dims: { width: 1.94, length: 4.42, beltH: 0.43, cabinH: 0.43, cabinZ: -0.18, cabinL: 1.72, wheelR: 0.35, roofStyle: 'coupe', rearWing: true }
+  },
+  {
+    id: 'm8_gt',
+    name: 'BMW M8 GRAN COUPE V8',
+    category: 'LUXURY CAR',
+    hp: 625,
+    topSpeedKmh: 318,
+    accel0to100: 3.1,
+    handlingRating: 88,
+    brakingRating: 91,
+    price: 0,
+    unlockedDefault: true,
+    defaultPaint: '#125432',
+    defaultPaintName: 'Isle of Man Green',
+    engineAudio: 'V8_RUMBLE',
+    physics: { accelMult: 1.12, topSpeedMps: 88.3, gripMult: 0.98, offroadGrip: 0.70, brakeMult: 1.04, rideHeight: 0.0, camHeight: 0.02 },
+    dims: { width: 2.02, length: 4.96, beltH: 0.45, cabinH: 0.42, cabinZ: -0.15, cabinL: 2.18, wheelR: 0.37, roofStyle: 'grancoupe' }
+  },
+  {
+    id: 'x5m_suv',
+    name: 'BMW X5 M COMPETITION',
+    category: 'SUV',
+    hp: 617,
+    topSpeedKmh: 286,
+    accel0to100: 3.7,
+    handlingRating: 85,
+    brakingRating: 86,
+    price: 35000,
+    unlockedDefault: false,
+    defaultPaint: '#08090c',
+    defaultPaintName: 'Sapphire Black',
+    engineAudio: 'V8_RUMBLE',
+    physics: { accelMult: 1.04, topSpeedMps: 79.4, gripMult: 0.96, offroadGrip: 0.92, brakeMult: 0.96, rideHeight: 0.14, camHeight: 0.28 },
+    dims: { width: 2.08, length: 4.82, beltH: 0.58, cabinH: 0.56, cabinZ: -0.25, cabinL: 2.55, wheelR: 0.41, roofStyle: 'suv' }
+  },
+  {
+    id: 'dakar_4x4',
+    name: 'RR DAKAR TRAILBLAZER 4X4',
+    category: 'OFF-ROAD VEHICLE',
+    hp: 560,
+    topSpeedKmh: 265,
+    accel0to100: 3.9,
+    handlingRating: 92,
+    brakingRating: 87,
+    price: 40000,
+    unlockedDefault: false,
+    defaultPaint: '#e5a914',
+    defaultPaintName: 'Sao Paulo Yellow',
+    engineAudio: 'V8_RUMBLE',
+    physics: { accelMult: 1.02, topSpeedMps: 73.6, gripMult: 0.94, offroadGrip: 1.05, brakeMult: 0.98, rideHeight: 0.22, camHeight: 0.36 },
+    dims: { width: 2.14, length: 4.68, beltH: 0.56, cabinH: 0.52, cabinZ: -0.12, cabinL: 2.25, wheelR: 0.44, roofStyle: 'offroad', roofRack: true }
+  },
+  {
+    id: 'apex_v10',
+    name: 'RR APEX V10 HYPER-GT',
+    category: 'SUPERCAR',
+    hp: 780,
+    topSpeedKmh: 352,
+    accel0to100: 2.6,
+    handlingRating: 98,
+    brakingRating: 97,
+    price: 55000,
+    unlockedDefault: false,
+    defaultPaint: '#168BFF',
+    defaultPaintName: 'Electric Horizon Blue',
+    engineAudio: 'V10_SCREAM',
+    physics: { accelMult: 1.28, topSpeedMps: 97.7, gripMult: 1.22, offroadGrip: 0.62, brakeMult: 1.18, rideHeight: -0.04, camHeight: -0.08 },
+    dims: { width: 2.06, length: 4.62, beltH: 0.36, cabinH: 0.34, cabinZ: 0.08, cabinL: 1.68, wheelR: 0.36, roofStyle: 'supercar', rearWing: true }
+  }
+];
+
 function createCockpitScreenTexture() {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
@@ -14,45 +119,45 @@ function createCockpitScreenTexture() {
   tex.colorSpace = THREE.SRGBColorSpace;
 
   const draw = (speedVal = 0, gear = '1', rpm = 850, unitLabel = 'KM/H') => {
-    ctx.fillStyle = '#060a12';
+    ctx.fillStyle = '#080b10';
     ctx.fillRect(0, 0, 512, 128);
 
     const grad = ctx.createLinearGradient(0, 0, 512, 0);
-    grad.addColorStop(0, '#00a8ff');
-    grad.addColorStop(0.5, '#262262');
+    grad.addColorStop(0, '#168bff');
+    grad.addColorStop(0.5, '#00d2ff');
     grad.addColorStop(1, '#e41e26');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 512, 4);
 
-    ctx.fillStyle = '#8e9fb5';
+    ctx.fillStyle = '#9ba8b8';
     ctx.font = 'bold 14px sans-serif';
     ctx.fillText(`SPEED ${unitLabel}`, 28, 34);
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 52px sans-serif';
     ctx.fillText(String(Math.round(Math.abs(speedVal))), 28, 88);
 
-    ctx.fillStyle = 'rgba(0, 168, 255, 0.16)';
+    ctx.fillStyle = 'rgba(22, 139, 255, 0.18)';
     ctx.fillRect(216, 22, 80, 84);
-    ctx.strokeStyle = '#00a8ff';
+    ctx.strokeStyle = '#168bff';
     ctx.lineWidth = 2;
     ctx.strokeRect(216, 22, 80, 84);
-    ctx.fillStyle = '#00a8ff';
+    ctx.fillStyle = '#168bff';
     ctx.font = 'bold 54px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(String(gear), 256, 84);
     ctx.textAlign = 'left';
 
-    ctx.fillStyle = '#8e9fb5';
+    ctx.fillStyle = '#9ba8b8';
     ctx.font = 'bold 14px sans-serif';
     ctx.fillText('ENGINE RPM', 330, 34);
-    ctx.fillStyle = rpm > 6300 ? '#e41e26' : '#f2f6fa';
+    ctx.fillStyle = rpm > 6300 ? '#e41e26' : '#ffffff';
     ctx.font = 'bold 34px sans-serif';
     ctx.fillText(String(Math.round(rpm / 10) * 10), 330, 74);
 
     ctx.fillStyle = 'rgba(255,255,255,0.12)';
     ctx.fillRect(330, 88, 154, 14);
     const rpmFrac = Math.min(1, Math.max(0, rpm / 7200));
-    ctx.fillStyle = rpm > 6300 ? '#e41e26' : '#00a8ff';
+    ctx.fillStyle = rpm > 6300 ? '#e41e26' : '#168bff';
     ctx.fillRect(330, 88, Math.round(154 * rpmFrac), 14);
 
     tex.needsUpdate = true;
@@ -78,25 +183,29 @@ function createUnderglowTexture() {
 }
 
 /**
- * Builds a detailed procedural BMW M4 Competition-inspired performance coupe
- * featuring sculpted aerodynamic bodywork, deep wheel arches, twin-kidney grille,
- * laser-style DRL headlights, L-blade taillights, 3D amber turn signals,
- * quad-exhaust M-Boost nitro flames, chassis neon underglow, articulated 10-spoke
- * wheels with drilled rotors & M-calipers, and a complete cockpit interior.
+ * Builds any playable vehicle from VEHICLE_CATALOG with ultra-detailed PBR paint,
+ * clearcoat, carbon fiber weave, alloy wheels, brake rotors/calipers, interior cockpit,
+ * 3D amber turn signals, quad-exhaust nitro flames, and chassis underglow.
  */
-export function buildProceduralBMW() {
+export function buildProceduralBMW(vehicleSpecOrId = 'm4_comp') {
+  const spec = typeof vehicleSpecOrId === 'string'
+    ? (VEHICLE_CATALOG.find((v) => v.id === vehicleSpecOrId) || VEHICLE_CATALOG[0])
+    : (vehicleSpecOrId || VEHICLE_CATALOG[0]);
+  const d = spec.dims || VEHICLE_CATALOG[0].dims;
+  const liftY = spec.physics ? (spec.physics.rideHeight || 0) : 0;
+
   const root = new THREE.Group();
   const bodyGroup = new THREE.Group();
   root.add(bodyGroup);
 
   const bodyPaintMat = new THREE.MeshPhysicalMaterial({
-    color: new THREE.Color('#0a2b6e'),
-    metalness: 0.86,
-    roughness: 0.16,
+    color: new THREE.Color(spec.defaultPaint || '#0a2b6e'),
+    metalness: 0.88,
+    roughness: 0.14,
     clearcoat: 1.0,
-    clearcoatRoughness: 0.05,
+    clearcoatRoughness: 0.04,
     reflectivity: 1.0,
-    envMapIntensity: 1.35
+    envMapIntensity: 1.45
   });
 
   const carbonMat = new THREE.MeshStandardMaterial({
@@ -168,214 +277,216 @@ export function buildProceduralBMW() {
     roughness: 0.2
   });
 
+  const W = d.width;
+  const L = d.length;
+  const beltH = d.beltH;
+  const cabinH = d.cabinH;
+  const baseBeltY = 0.60 + liftY;
+  const baseCabinY = baseBeltY + beltH * 0.5 + cabinH * 0.48;
+
   // 1. Lower Chassis & Floor Sill
-  const lowerPan = new THREE.Mesh(new THREE.BoxGeometry(1.94, 0.28, 4.58), carbonMat);
-  lowerPan.position.set(0, 0.34, 0.02);
+  const lowerPan = new THREE.Mesh(new THREE.BoxGeometry(W * 0.97, 0.28, L * 0.98), carbonMat);
+  lowerPan.position.set(0, 0.34 + liftY, 0.02);
   lowerPan.castShadow = true;
   lowerPan.receiveShadow = true;
   bodyGroup.add(lowerPan);
 
   // 2. Main Sculpted Body Beltline
-  const mainBody = new THREE.Mesh(new THREE.BoxGeometry(1.98, 0.44, 4.66), bodyPaintMat);
-  mainBody.position.set(0, 0.60, 0.0);
+  const mainBody = new THREE.Mesh(new THREE.BoxGeometry(W, beltH, L), bodyPaintMat);
+  mainBody.position.set(0, baseBeltY, 0.0);
   mainBody.castShadow = true;
   mainBody.receiveShadow = true;
   bodyGroup.add(mainBody);
 
   // Sculpted Hood Power Dome & Character Ribs
-  const hoodSlope = new THREE.Mesh(new THREE.BoxGeometry(1.78, 0.12, 1.56), bodyPaintMat);
-  hoodSlope.position.set(0, 0.83, 1.32);
-  hoodSlope.rotation.x = 0.075;
+  const hoodSlope = new THREE.Mesh(new THREE.BoxGeometry(W * 0.90, 0.12, L * 0.34), bodyPaintMat);
+  hoodSlope.position.set(0, baseBeltY + beltH * 0.52, L * 0.28);
+  hoodSlope.rotation.x = d.roofStyle === 'supercar' ? 0.14 : 0.075;
   hoodSlope.castShadow = true;
   bodyGroup.add(hoodSlope);
 
-  const powerDome = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.06, 1.22), bodyPaintMat);
-  powerDome.position.set(0, 0.87, 1.25);
+  const powerDome = new THREE.Mesh(new THREE.BoxGeometry(W * 0.35, 0.06, L * 0.26), d.roofStyle === 'offroad' ? carbonMat : bodyPaintMat);
+  powerDome.position.set(0, baseBeltY + beltH * 0.58, L * 0.26);
   powerDome.rotation.x = 0.065;
   bodyGroup.add(powerDome);
 
   for (const side of [-1, 1]) {
     const hoodVent = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.025, 0.36), carbonMat);
-    hoodVent.position.set(side * 0.44, 0.86, 1.42);
+    hoodVent.position.set(side * (W * 0.22), baseBeltY + beltH * 0.56, L * 0.30);
     hoodVent.rotation.x = 0.075;
     bodyGroup.add(hoodVent);
   }
 
-  // Wide Muscular M4 Fender Flares (Front & Rear)
+  // Wide Muscular Fender Flares
+  const frontZ = L * 0.305;
+  const rearZ = -L * 0.295;
   const archPositions = [
-    { x: -0.96, y: 0.56, z: 1.42, len: 0.92 },
-    { x: 0.96, y: 0.56, z: 1.42, len: 0.92 },
-    { x: -0.99, y: 0.58, z: -1.38, len: 0.98 },
-    { x: 0.99, y: 0.58, z: -1.38, len: 0.98 }
+    { x: -W * 0.49, y: baseBeltY - 0.04, z: frontZ, len: 0.92 },
+    { x: W * 0.49, y: baseBeltY - 0.04, z: frontZ, len: 0.92 },
+    { x: -W * 0.50, y: baseBeltY - 0.02, z: rearZ, len: 0.98 },
+    { x: W * 0.50, y: baseBeltY - 0.02, z: rearZ, len: 0.98 }
   ];
   archPositions.forEach((ap) => {
-    const flare = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.36, ap.len), bodyPaintMat);
+    const flare = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.36, ap.len), d.roofStyle === 'offroad' ? carbonMat : bodyPaintMat);
     flare.position.set(ap.x, ap.y, ap.z);
     flare.castShadow = true;
     bodyGroup.add(flare);
 
-    const archLip = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, ap.len * 0.92), carbonMat);
+    const archLip = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.08, ap.len * 0.92), carbonMat);
     archLip.position.set(ap.x, ap.y + 0.17, ap.z);
     bodyGroup.add(archLip);
   });
 
   // Side Skirts + M-Gills
   for (const side of [-1, 1]) {
-    const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.09, 2.05), carbonMat);
-    skirt.position.set(side * 0.99, 0.24, 0.02);
+    const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.09, L * 0.44), carbonMat);
+    skirt.position.set(side * (W * 0.50), 0.24 + liftY, 0.02);
     bodyGroup.add(skirt);
 
-    const gill = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.24), carbonMat);
-    gill.position.set(side * 1.00, 0.68, 0.86);
+    const gill = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.14, 0.24), carbonMat);
+    gill.position.set(side * (W * 0.505), baseBeltY + 0.06, L * 0.18);
     bodyGroup.add(gill);
   }
 
-  // 3. Fastback Coupe Cabin & Carbon Fiber Roof
-  const cabinCore = new THREE.Mesh(new THREE.BoxGeometry(1.58, 0.44, 1.88), bodyPaintMat);
-  cabinCore.position.set(0, 1.04, -0.22);
+  // 3. Cabin & Carbon Roof
+  const cabinW = W * 0.80;
+  const cabinCore = new THREE.Mesh(new THREE.BoxGeometry(cabinW, cabinH, d.cabinL), bodyPaintMat);
+  cabinCore.position.set(0, baseCabinY, d.cabinZ);
   cabinCore.castShadow = true;
   bodyGroup.add(cabinCore);
 
-  const carbonRoof = new THREE.Mesh(new THREE.BoxGeometry(1.48, 0.06, 1.65), carbonMat);
-  carbonRoof.position.set(0, 1.27, -0.22);
+  const carbonRoof = new THREE.Mesh(new THREE.BoxGeometry(cabinW * 0.94, 0.06, d.cabinL * 0.88), d.roofStyle === 'suv' ? bodyPaintMat : carbonMat);
+  carbonRoof.position.set(0, baseCabinY + cabinH * 0.52, d.cabinZ);
   carbonRoof.castShadow = true;
   bodyGroup.add(carbonRoof);
 
-  for (const side of [-1, 1]) {
-    const roofFin = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.025, 1.52), bodyPaintMat);
-    roofFin.position.set(side * 0.68, 1.29, -0.22);
-    bodyGroup.add(roofFin);
+  // Off-Road Roof Lightbar & Safari Rack (for RR Dakar Trailblazer 4x4)
+  if (d.roofRack) {
+    const rack = new THREE.Mesh(new THREE.BoxGeometry(cabinW * 0.88, 0.07, d.cabinL * 0.72), carbonMat);
+    rack.position.set(0, baseCabinY + cabinH * 0.62, d.cabinZ);
+    bodyGroup.add(rack);
+    const lightBar = new THREE.Mesh(new THREE.BoxGeometry(cabinW * 0.82, 0.065, 0.08), headlightMat);
+    lightBar.position.set(0, baseCabinY + cabinH * 0.66, d.cabinZ + d.cabinL * 0.34);
+    bodyGroup.add(lightBar);
   }
 
-  const sharkFin = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.09, 0.18), carbonMat);
-  sharkFin.position.set(0, 1.32, -0.88);
-  bodyGroup.add(sharkFin);
+  // High-Downforce GT Rear Wing (for M2 CS Track & RR Apex V10 Supercar)
+  if (d.rearWing) {
+    const wingY = baseBeltY + beltH * 0.5 + 0.24;
+    const wingZ = -L * 0.47;
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(W * 0.92, 0.04, 0.26), carbonMat);
+    blade.position.set(0, wingY, wingZ);
+    blade.rotation.x = 0.12;
+    bodyGroup.add(blade);
+    for (const side of [-1, 1]) {
+      const strut = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.24, 0.16), carbonMat);
+      strut.position.set(side * (W * 0.28), wingY - 0.12, wingZ + 0.04);
+      bodyGroup.add(strut);
+      const endplate = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.14, 0.30), carbonMat);
+      endplate.position.set(side * (W * 0.46), wingY, wingZ);
+      bodyGroup.add(endplate);
+    }
+  }
 
-  // Windshield, Rear Fastback Glass & Side Windows
-  const frontGlass = new THREE.Mesh(new THREE.BoxGeometry(1.50, 0.56, 0.05), glassMat);
-  frontGlass.position.set(0, 1.05, 0.68);
+  // Windshield, Rear Glass & Side Windows
+  const frontGlass = new THREE.Mesh(new THREE.BoxGeometry(cabinW * 0.95, cabinH * 1.25, 0.05), glassMat);
+  frontGlass.position.set(0, baseCabinY, d.cabinZ + d.cabinL * 0.48);
   frontGlass.rotation.x = -0.88;
   bodyGroup.add(frontGlass);
 
-  const rearGlass = new THREE.Mesh(new THREE.BoxGeometry(1.46, 0.62, 0.05), glassMat);
-  rearGlass.position.set(0, 1.04, -1.24);
-  rearGlass.rotation.x = 0.98;
+  const rearGlass = new THREE.Mesh(new THREE.BoxGeometry(cabinW * 0.92, cabinH * 1.32, 0.05), glassMat);
+  rearGlass.position.set(0, baseCabinY, d.cabinZ - d.cabinL * 0.52);
+  rearGlass.rotation.x = d.roofStyle === 'suv' || d.roofStyle === 'offroad' ? 0.42 : 0.98;
   bodyGroup.add(rearGlass);
 
   for (const side of [-1, 1]) {
-    const sideWin = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.36, 1.66), glassMat);
-    sideWin.position.set(side * 0.78, 1.06, -0.22);
+    const sideWin = new THREE.Mesh(new THREE.BoxGeometry(0.04, cabinH * 0.82, d.cabinL * 0.88), glassMat);
+    sideWin.position.set(side * (cabinW * 0.495), baseCabinY + 0.02, d.cabinZ);
     bodyGroup.add(sideWin);
   }
 
   // Rear Decklid & Carbon Ducktail Spoiler
-  const rearDeck = new THREE.Mesh(new THREE.BoxGeometry(1.82, 0.14, 0.74), bodyPaintMat);
-  rearDeck.position.set(0, 0.84, -1.92);
-  rearDeck.rotation.x = -0.06;
-  rearDeck.castShadow = true;
-  bodyGroup.add(rearDeck);
-
-  const spoilerLip = new THREE.Mesh(new THREE.BoxGeometry(1.76, 0.065, 0.18), carbonMat);
-  spoilerLip.position.set(0, 0.94, -2.26);
+  const spoilerLip = new THREE.Mesh(new THREE.BoxGeometry(W * 0.88, 0.065, 0.18), carbonMat);
+  spoilerLip.position.set(0, baseBeltY + beltH * 0.52, -L * 0.485);
   spoilerLip.rotation.x = 0.24;
   bodyGroup.add(spoilerLip);
 
-  // 4. Front Fascia: Iconic G82 Twin-Kidney Grille, Carbon Intake Splitters & Laser DRLs
-  const frontBumper = new THREE.Mesh(new THREE.BoxGeometry(1.96, 0.42, 0.26), bodyPaintMat);
-  frontBumper.position.set(0, 0.48, 2.26);
+  // 4. Front Fascia: Iconic Twin-Kidney Grille / Intake & Laser DRLs
+  const frontZEdge = L * 0.485;
+  const frontBumper = new THREE.Mesh(new THREE.BoxGeometry(W * 0.99, beltH * 0.95, 0.26), bodyPaintMat);
+  frontBumper.position.set(0, baseBeltY - 0.10, frontZEdge);
   bodyGroup.add(frontBumper);
 
-  const frontSplitter = new THREE.Mesh(new THREE.BoxGeometry(2.02, 0.065, 0.36), carbonMat);
-  frontSplitter.position.set(0, 0.22, 2.28);
+  const frontSplitter = new THREE.Mesh(new THREE.BoxGeometry(W * 1.02, 0.065, 0.36), carbonMat);
+  frontSplitter.position.set(0, 0.22 + liftY, frontZEdge + 0.02);
   bodyGroup.add(frontSplitter);
 
   for (const side of [-1, 1]) {
-    const kidneyFrame = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.46, 0.09), chromeDarkMat);
-    kidneyFrame.position.set(side * 0.20, 0.50, 2.36);
+    const kidneyFrame = new THREE.Mesh(new THREE.BoxGeometry(0.32, beltH * 0.98, 0.09), chromeDarkMat);
+    kidneyFrame.position.set(side * 0.20, baseBeltY - 0.08, frontZEdge + 0.10);
     bodyGroup.add(kidneyFrame);
 
-    const kidneyCore = new THREE.Mesh(new THREE.BoxGeometry(0.27, 0.41, 0.10), carbonMat);
-    kidneyCore.position.set(side * 0.20, 0.50, 2.37);
+    const kidneyCore = new THREE.Mesh(new THREE.BoxGeometry(0.27, beltH * 0.88, 0.10), carbonMat);
+    kidneyCore.position.set(side * 0.20, baseBeltY - 0.08, frontZEdge + 0.11);
     bodyGroup.add(kidneyCore);
 
-    for (let s = -3; s <= 3; s++) {
-      const slat = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.018, 0.11), chromeDarkMat);
-      slat.position.set(side * 0.20, 0.50 + s * 0.052, 2.38);
-      bodyGroup.add(slat);
-    }
-
-    const sideIntake = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.24, 0.10), carbonMat);
-    sideIntake.position.set(side * 0.72, 0.40, 2.35);
-    bodyGroup.add(sideIntake);
-
-    // Headlight Housing + Twin Hexagonal Angel-Eye DRL Signatures
     const hlHousing = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.14, 0.16), carbonMat);
-    hlHousing.position.set(side * 0.68, 0.69, 2.28);
+    hlHousing.position.set(side * (W * 0.34), baseBeltY + 0.09, frontZEdge + 0.02);
     hlHousing.rotation.y = -side * 0.16;
     bodyGroup.add(hlHousing);
 
     for (const ringOffset of [-0.09, 0.09]) {
       const drlBlade = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.045, 0.04), headlightMat);
-      drlBlade.position.set(side * (0.68 + ringOffset), 0.67, 2.36);
+      drlBlade.position.set(side * (W * 0.34 + ringOffset), baseBeltY + 0.07, frontZEdge + 0.10);
       drlBlade.rotation.y = -side * 0.16;
       bodyGroup.add(drlBlade);
-
-      const drlVert = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.085, 0.04), headlightMat);
-      drlVert.position.set(side * (0.68 + ringOffset + 0.05), 0.69, 2.36);
-      bodyGroup.add(drlVert);
     }
 
-    // Front Amber Turn Signal Eyebrow LED
     const turnMat = side < 0 ? turnLeftMat : turnRightMat;
     const frontTurnBrow = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.026, 0.05), turnMat);
-    frontTurnBrow.position.set(side * 0.68, 0.755, 2.35);
+    frontTurnBrow.position.set(side * (W * 0.34), baseBeltY + 0.155, frontZEdge + 0.09);
     frontTurnBrow.rotation.y = -side * 0.16;
     bodyGroup.add(frontTurnBrow);
   }
 
   // 5. Rear Fascia: L-Blade LED Taillights, Carbon Diffuser & Quad Exhausts
-  const rearBumper = new THREE.Mesh(new THREE.BoxGeometry(1.96, 0.44, 0.24), bodyPaintMat);
-  rearBumper.position.set(0, 0.50, -2.26);
+  const rearZEdge = -L * 0.485;
+  const rearBumper = new THREE.Mesh(new THREE.BoxGeometry(W * 0.99, beltH, 0.24), bodyPaintMat);
+  rearBumper.position.set(0, baseBeltY - 0.08, rearZEdge);
   bodyGroup.add(rearBumper);
 
-  const rearDiffuser = new THREE.Mesh(new THREE.BoxGeometry(1.78, 0.22, 0.22), carbonMat);
-  rearDiffuser.position.set(0, 0.28, -2.30);
+  const rearDiffuser = new THREE.Mesh(new THREE.BoxGeometry(W * 0.90, 0.22, 0.22), carbonMat);
+  rearDiffuser.position.set(0, 0.28 + liftY, rearZEdge - 0.04);
   bodyGroup.add(rearDiffuser);
 
   for (const side of [-1, 1]) {
     const tailOuter = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.11, 0.08), taillightMat);
-    tailOuter.position.set(side * 0.66, 0.74, -2.34);
+    tailOuter.position.set(side * (W * 0.33), baseBeltY + 0.14, rearZEdge - 0.08);
     bodyGroup.add(tailOuter);
 
-    const tailVertical = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.16, 0.08), taillightMat);
-    tailVertical.position.set(side * 0.88, 0.76, -2.34);
-    bodyGroup.add(tailVertical);
-
     const revBar = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.035, 0.09), reverseLightMat);
-    revBar.position.set(side * 0.56, 0.69, -2.35);
+    revBar.position.set(side * (W * 0.28), baseBeltY + 0.09, rearZEdge - 0.09);
     bodyGroup.add(revBar);
 
-    // Rear Amber Turn Signal Strip
     const turnMat = side < 0 ? turnLeftMat : turnRightMat;
     const rearTurnStrip = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.028, 0.09), turnMat);
-    rearTurnStrip.position.set(side * 0.68, 0.665, -2.35);
+    rearTurnStrip.position.set(side * (W * 0.34), baseBeltY + 0.065, rearZEdge - 0.09);
     bodyGroup.add(rearTurnStrip);
 
-    // Quad M-Exhaust Tips (2 per side)
     for (const pipeOff of [-0.07, 0.07]) {
       const pipe = new THREE.Mesh(
         new THREE.CylinderGeometry(0.052, 0.052, 0.22, 14).rotateX(Math.PI / 2),
         chromeDarkMat
       );
-      pipe.position.set(side * 0.46 + pipeOff, 0.26, -2.38);
+      pipe.position.set(side * 0.46 + pipeOff, 0.26 + liftY, rearZEdge - 0.12);
       bodyGroup.add(pipe);
     }
   }
 
-  // 6. Phase 2 Quad-Exhaust M-Boost / Nitrous Plasma Flame Group
+  // 6. Quad-Exhaust M-Boost / Nitrous Plasma Flame Group
   const nitroGroup = new THREE.Group();
   const nitroOuterMat = new THREE.MeshBasicMaterial({
-    color: 0x00c8ff,
+    color: 0x168bff,
     transparent: true,
     opacity: 0.85,
     depthWrite: false
@@ -392,22 +503,22 @@ export function buildProceduralBMW() {
         new THREE.ConeGeometry(0.068, 0.72, 10).rotateX(-Math.PI / 2),
         nitroOuterMat
       );
-      coneOuter.position.set(side * 0.46 + pipeOff, 0.26, -2.82);
+      coneOuter.position.set(side * 0.46 + pipeOff, 0.26 + liftY, rearZEdge - 0.56);
       const coneCore = new THREE.Mesh(
         new THREE.ConeGeometry(0.036, 0.44, 8).rotateX(-Math.PI / 2),
         nitroCoreMat
       );
-      coneCore.position.set(side * 0.46 + pipeOff, 0.26, -2.68);
+      coneCore.position.set(side * 0.46 + pipeOff, 0.26 + liftY, rearZEdge - 0.42);
       nitroGroup.add(coneOuter, coneCore);
     }
   }
-  const nitroLight = new THREE.PointLight(0x00d2ff, 0, 7.5);
-  nitroLight.position.set(0, 0.35, -2.85);
+  const nitroLight = new THREE.PointLight(0x168bff, 0, 7.5);
+  nitroLight.position.set(0, 0.35 + liftY, rearZEdge - 0.60);
   nitroGroup.add(nitroLight);
   nitroGroup.visible = false;
   bodyGroup.add(nitroGroup);
 
-  // 7. M-Aerodynamic Twin-Stalk Side Mirrors with Amber Turn Signal Repeaters
+  // 7. Side Mirrors with Amber Turn Signal Repeaters
   for (const side of [-1, 1]) {
     const mirrorGroup = new THREE.Group();
     const cap = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.10, 0.14), carbonMat);
@@ -417,12 +528,13 @@ export function buildProceduralBMW() {
     const mirrorBlink = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.022, 0.03), turnMat);
     mirrorBlink.position.set(side * 0.02, 0.01, 0.065);
     mirrorGroup.add(cap, stalk, mirrorBlink);
-    mirrorGroup.position.set(side * 1.03, 0.88, 0.52);
+    mirrorGroup.position.set(side * (W * 0.52), baseBeltY + 0.28, 0.52);
     bodyGroup.add(mirrorGroup);
   }
 
   // 8. Detailed Cockpit Interior
   const cockpitGroup = new THREE.Group();
+  cockpitGroup.position.y = liftY;
 
   const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.06, 1.85), interiorTrimMat);
   floorMesh.position.set(0, 0.36, -0.10);
@@ -432,35 +544,18 @@ export function buildProceduralBMW() {
   consoleMesh.position.set(0, 0.54, -0.05);
   cockpitGroup.add(consoleMesh);
 
-  const shifterMesh = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.11, 0.075), carbonMat);
-  shifterMesh.position.set(-0.04, 0.72, 0.12);
-  shifterMesh.rotation.x = -0.15;
-  cockpitGroup.add(shifterMesh);
-
-  const dashGeo = new THREE.BoxGeometry(1.52, 0.28, 0.52);
-  const dashMesh = new THREE.Mesh(dashGeo, leatherMat);
+  const dashMesh = new THREE.Mesh(new THREE.BoxGeometry(1.52, 0.28, 0.52), leatherMat);
   dashMesh.position.set(0, 0.80, 0.46);
   cockpitGroup.add(dashMesh);
 
-  const dashTrim = new THREE.Mesh(new THREE.BoxGeometry(1.48, 0.045, 0.46), carbonMat);
-  dashTrim.position.set(0, 0.88, 0.42);
-  cockpitGroup.add(dashTrim);
-
   const cockpitScreen = createCockpitScreenTexture();
   const screenMat = new THREE.MeshBasicMaterial({ map: cockpitScreen.tex });
-  const screenGeo = new THREE.BoxGeometry(0.74, 0.15, 0.025);
-  const screenMesh = new THREE.Mesh(screenGeo, screenMat);
+  const screenMesh = new THREE.Mesh(new THREE.BoxGeometry(0.74, 0.15, 0.025), screenMat);
   screenMesh.position.set(-0.10, 0.965, 0.30);
   screenMesh.rotation.y = 0.08;
   cockpitGroup.add(screenMesh);
 
   for (const side of [-1, 1]) {
-    const aPillar = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.52, 0.065), interiorTrimMat);
-    aPillar.position.set(side * 0.70, 1.05, 0.42);
-    aPillar.rotation.x = -0.62;
-    aPillar.rotation.z = side * 0.18;
-    cockpitGroup.add(aPillar);
-
     const seatGroup = new THREE.Group();
     const cushion = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.10, 0.48), leatherMat);
     cushion.position.set(0, 0.46, -0.18);
@@ -474,38 +569,13 @@ export function buildProceduralBMW() {
     cockpitGroup.add(seatGroup);
   }
 
-  const rearViewMirror = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.055, 0.03), interiorTrimMat);
-  rearViewMirror.position.set(0, 1.21, 0.25);
-  cockpitGroup.add(rearViewMirror);
-
   const steeringWheelGroup = new THREE.Group();
-  const rimGeo = new THREE.TorusGeometry(0.165, 0.024, 10, 28);
-  const rimMesh = new THREE.Mesh(rimGeo, leatherMat);
+  const rimMesh = new THREE.Mesh(new THREE.TorusGeometry(0.165, 0.024, 10, 28), leatherMat);
   steeringWheelGroup.add(rimMesh);
-
-  const markerMesh = new THREE.Mesh(
-    new THREE.BoxGeometry(0.025, 0.052, 0.052),
-    new THREE.MeshBasicMaterial({ color: 0xe41e26 })
-  );
-  markerMesh.position.set(0, 0.165, 0);
-  steeringWheelGroup.add(markerMesh);
-
   const hubMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.058, 0.04, 16).rotateX(Math.PI / 2), carbonMat);
   steeringWheelGroup.add(hubMesh);
-
-  const spokeGeo = new THREE.BoxGeometry(0.30, 0.028, 0.022);
-  const spokeMesh = new THREE.Mesh(spokeGeo, chromeDarkMat);
+  const spokeMesh = new THREE.Mesh(new THREE.BoxGeometry(0.30, 0.028, 0.022), chromeDarkMat);
   steeringWheelGroup.add(spokeMesh);
-
-  const lowSpoke = new THREE.Mesh(new THREE.BoxGeometry(0.032, 0.14, 0.022), chromeDarkMat);
-  lowSpoke.position.set(0, -0.08, 0);
-  steeringWheelGroup.add(lowSpoke);
-
-  for (const side of [-1, 1]) {
-    const paddle = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.09, 0.012), carbonMat);
-    paddle.position.set(side * 0.11, 0.03, 0.03);
-    steeringWheelGroup.add(paddle);
-  }
 
   steeringWheelGroup.position.set(-0.36, 0.87, 0.14);
   steeringWheelGroup.rotation.x = -0.32;
@@ -513,48 +583,50 @@ export function buildProceduralBMW() {
   bodyGroup.add(cockpitGroup);
 
   // 9. Four Separate Articulated Wheels
+  const wR = d.wheelR || 0.36;
   const tireMat = new THREE.MeshStandardMaterial({ color: 0x121316, roughness: 0.82, metalness: 0.1 });
   const rimMat = new THREE.MeshStandardMaterial({ color: 0x262a30, metalness: 0.88, roughness: 0.22 });
   const rotorMat = new THREE.MeshStandardMaterial({ color: 0x777c85, metalness: 0.8, roughness: 0.35 });
-  const caliperMat = new THREE.MeshStandardMaterial({ color: 0x0055aa, metalness: 0.6, roughness: 0.3 });
+  const caliperMat = new THREE.MeshStandardMaterial({ color: 0x168bff, metalness: 0.6, roughness: 0.3 });
 
   const wheels = [];
   const wheelPositions = [
-    { x: -0.88, y: 0.36, z: 1.42, isFront: true, side: -1 },
-    { x: 0.88, y: 0.36, z: 1.42, isFront: true, side: 1 },
-    { x: -0.90, y: 0.36, z: -1.38, isFront: false, side: -1 },
-    { x: 0.90, y: 0.36, z: -1.38, isFront: false, side: 1 }
+    { x: -W * 0.45, y: wR, z: frontZ, isFront: true, side: -1 },
+    { x: W * 0.45, y: wR, z: frontZ, isFront: true, side: 1 },
+    { x: -W * 0.46, y: wR, z: rearZ, isFront: false, side: -1 },
+    { x: W * 0.46, y: wR, z: rearZ, isFront: false, side: 1 }
   ];
 
   wheelPositions.forEach((wp) => {
     const steerPivot = new THREE.Group();
     steerPivot.position.set(wp.x, wp.y, wp.z);
 
-    const caliperGeo = new THREE.BoxGeometry(0.08, 0.18, 0.12);
-    const caliper = new THREE.Mesh(caliperGeo, caliperMat);
+    const caliper = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.18, 0.12), caliperMat);
     caliper.position.set(wp.side * 0.05, 0.06, -0.14);
     steerPivot.add(caliper);
 
     const spinGroup = new THREE.Group();
-    const tireGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.28, 24);
-    tireGeo.rotateZ(Math.PI / 2);
-    const tire = new THREE.Mesh(tireGeo, tireMat);
+    const tire = new THREE.Mesh(
+      new THREE.CylinderGeometry(wR, wR, 0.28, 24).rotateZ(Math.PI / 2),
+      tireMat
+    );
     tire.castShadow = true;
     spinGroup.add(tire);
 
     const rimBarrel = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.285, 0.285, 0.26, 20).rotateZ(Math.PI / 2),
+      new THREE.CylinderGeometry(wR * 0.78, wR * 0.78, 0.26, 20).rotateZ(Math.PI / 2),
       rimMat
     );
     spinGroup.add(rimBarrel);
 
-    const rotorGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.04, 18);
-    rotorGeo.rotateZ(Math.PI / 2);
-    const rotor = new THREE.Mesh(rotorGeo, rotorMat);
+    const rotor = new THREE.Mesh(
+      new THREE.CylinderGeometry(wR * 0.65, wR * 0.65, 0.04, 18).rotateZ(Math.PI / 2),
+      rotorMat
+    );
     spinGroup.add(rotor);
 
     for (let i = 0; i < 5; i++) {
-      const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.56, 0.035), rimMat);
+      const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.04, wR * 1.52, 0.035), rimMat);
       spoke.position.x = wp.side * 0.115;
       spoke.rotation.x = (i * Math.PI) / 5;
       spinGroup.add(spoke);
@@ -565,26 +637,26 @@ export function buildProceduralBMW() {
     wheels.push({ steerPivot, spinGroup, isFront: wp.isFront, baseY: wp.y });
   });
 
-  // 10. Real Headlight Spotlights + Taillight Point Glow + Chassis Underglow
+  // 10. Headlight Spotlights + Taillight Point Glow + Chassis Underglow
   const headSpotL = new THREE.SpotLight(0xdcf0ff, 28, 65, Math.PI / 5, 0.45, 1.4);
-  headSpotL.position.set(-0.65, 0.65, 2.2);
+  headSpotL.position.set(-0.65, 0.65 + liftY, frontZEdge);
   headSpotL.target.position.set(-0.65, 0.0, 18.0);
   bodyGroup.add(headSpotL);
   bodyGroup.add(headSpotL.target);
 
   const headSpotR = new THREE.SpotLight(0xdcf0ff, 28, 65, Math.PI / 5, 0.45, 1.4);
-  headSpotR.position.set(0.65, 0.65, 2.2);
+  headSpotR.position.set(0.65, 0.65 + liftY, frontZEdge);
   headSpotR.target.position.set(0.65, 0.0, 18.0);
   bodyGroup.add(headSpotR);
   bodyGroup.add(headSpotR.target);
 
   const tailPointLight = new THREE.PointLight(0xff1111, 1.2, 6.5);
-  tailPointLight.position.set(0, 0.65, -2.5);
+  tailPointLight.position.set(0, 0.65 + liftY, rearZEdge - 0.15);
   bodyGroup.add(tailPointLight);
 
   const underglowMat = new THREE.MeshBasicMaterial({
     map: createUnderglowTexture(),
-    color: 0x00d8ff,
+    color: 0x168bff,
     transparent: true,
     opacity: 0.72,
     depthWrite: false,
@@ -593,7 +665,7 @@ export function buildProceduralBMW() {
     polygonOffsetUnits: -5
   });
   const underglowMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(2.7, 5.2).rotateX(-Math.PI / 2),
+    new THREE.PlaneGeometry(W * 1.35, L * 1.12).rotateX(-Math.PI / 2),
     underglowMat
   );
   underglowMesh.position.y = 0.045;
@@ -602,6 +674,7 @@ export function buildProceduralBMW() {
   root.add(underglowMesh);
 
   return {
+    spec,
     root,
     bodyGroup,
     cockpitGroup,
@@ -633,8 +706,7 @@ export function buildProceduralBMW() {
 }
 
 /**
- * Builds a streamlined high-performance M-Coupe mesh for Phase 2 Multiplayer Peers
- * and AI Convoy Rivals on the highway.
+ * Builds a streamlined high-performance M-Coupe mesh for Multiplayer Peers & AI Rivals.
  */
 export function buildRivalBMWCoupe(paintHex = '#b8141c') {
   const group = new THREE.Group();
@@ -686,12 +758,48 @@ export function buildRivalBMWCoupe(paintHex = '#b8141c') {
     group.add(w);
   }
 
-  return { group, paintMat };
+  return { group, paintMat, tailMat: tlMat };
+}
+
+/**
+ * Builds an articulated 3D NPC Pedestrian with swinging arms and walking legs (Section 5).
+ */
+export function buildNPCPedestrian(shirtColor = 0x168bff, pantsColor = 0x1a2230, skinColor = 0xe0b494) {
+  const root = new THREE.Group();
+  const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.75 });
+  const pantsMat = new THREE.MeshStandardMaterial({ color: pantsColor, roughness: 0.85 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.65 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: 0x181412, roughness: 0.9 });
+
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.56, 0.24), shirtMat);
+  torso.position.y = 1.08;
+  torso.castShadow = true;
+  root.add(torso);
+
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.26, 0.24), skinMat);
+  head.position.y = 1.52;
+  root.add(head);
+
+  const hair = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.10, 0.25), hairMat);
+  hair.position.y = 1.64;
+  root.add(hair);
+
+  const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.76, 0.18), pantsMat);
+  leftLeg.position.set(-0.11, 0.42, 0);
+  const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.76, 0.18), pantsMat);
+  rightLeg.position.set(0.11, 0.42, 0);
+
+  const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.52, 0.14), shirtMat);
+  leftArm.position.set(-0.29, 1.06, 0);
+  const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.52, 0.14), shirtMat);
+  rightArm.position.set(0.29, 1.06, 0);
+
+  root.add(leftLeg, rightLeg, leftArm, rightArm);
+  return { root, leftLeg, rightLeg, leftArm, rightArm };
 }
 
 /**
  * Optional loader for external high-poly GLB vehicle models.
- * Falls back cleanly to the procedural vehicle if URL fails or is invalid.
  */
 export function loadExternalGLBVehicle(url, carRig, onStatus = () => {}) {
   if (!url || !url.trim()) return;
@@ -725,8 +833,8 @@ export function loadExternalGLBVehicle(url, carRig, onStatus = () => {}) {
     },
     undefined,
     (err) => {
-      console.warn('Optional GLB failed to load; keeping procedural BMW M-Coupe:', err);
-      onStatus('GLB load failed. Using built-in Procedural M-Coupe.');
+      console.warn('Optional GLB failed to load; keeping procedural vehicle:', err);
+      onStatus('GLB load failed. Using built-in Procedural Vehicle.');
     }
   );
 }
