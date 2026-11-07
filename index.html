@@ -10,6 +10,7 @@
   <link rel="icon" type="image/png" href="./assets/ui/rr_studios_logo.png" />
   <link rel="stylesheet" href="./style.css" />
   <link rel="stylesheet" href="./hud-upgrade.css" />
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" async crossorigin="anonymous"></script>
   <script type="importmap">
     {
       "imports": {
@@ -157,6 +158,24 @@
         <span class="card-label">GARAGE</span>
       </button>
 
+      <button id="btn-open-map" class="aaa-menu-card">
+        <span class="card-icon-box">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z" fill="currentColor"/>
+          </svg>
+        </span>
+        <span class="card-label">OPEN WORLD</span>
+      </button>
+
+      <button id="btn-open-missions" class="aaa-menu-card">
+        <span class="card-icon-box">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z" fill="currentColor"/>
+          </svg>
+        </span>
+        <span class="card-label">MISSIONS</span>
+      </button>
+
       <button id="btn-open-multiplayer" class="aaa-menu-card">
         <span class="card-icon-box">
           <svg viewBox="0 0 24 24" width="20" height="20">
@@ -164,7 +183,7 @@
           </svg>
         </span>
         <span class="card-label">MULTIPLAYER</span>
-        <span class="card-tag soon-tag">SOON</span>
+        <span class="card-tag soon-tag" style="background:rgba(22,139,255,0.22);color:#168BFF;border-color:rgba(22,139,255,0.5);">LIVE</span>
       </button>
 
       <button id="btn-open-settings" class="aaa-menu-card">
@@ -240,6 +259,13 @@
         <span class="plus-badge" id="garage-hp-badge">510 HP</span>
       </div>
     </header>
+
+    <!-- Race-Master Style Vehicle Selection Carousel & Category Bar -->
+    <div class="vehicle-selector-bar" id="vehicle-selector-bar">
+      <button id="btn-car-prev" class="car-nav-arrow" type="button" title="Previous Vehicle" aria-label="Previous Vehicle">&#9664;</button>
+      <div class="vehicle-carousel-strip" id="vehicle-carousel"></div>
+      <button id="btn-car-next" class="car-nav-arrow" type="button" title="Next Vehicle" aria-label="Next Vehicle">&#9654;</button>
+    </div>
 
     <!-- Left Vertical Paint Swatch Dock -->
     <aside class="garage-swatch-dock" id="paint-select" aria-label="Vehicle Paint Selection">
@@ -444,6 +470,127 @@
     </footer>
   </div>
 
+
+  <!-- ====================================================================
+       SCREEN 2C: INTERACTIVE OPEN-WORLD MAP & GPS NAVIGATION (Section 4 & 14)
+       ==================================================================== -->
+  <div id="world-map-screen" class="aaa-screen settings-screen hidden">
+    <header class="subscreen-header">
+      <div class="subscreen-title-group">
+        <button id="btn-map-home" class="header-icon-btn" title="Return" aria-label="Return">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/></svg>
+        </button>
+        <span class="header-slash"></span>
+        <h2>HORIZON OPEN-WORLD MAP</h2>
+        <span class="vehicle-subtitle" id="map-discovered-label">LANDMARKS DISCOVERED: 1 / 6</span>
+      </div>
+      <div class="garage-currency-pill">
+        <span class="coin-badge">GPS</span>
+        <strong id="map-selected-zone">DOWNTOWN METROPOLIS</strong>
+      </div>
+    </header>
+
+    <div class="settings-card-shell world-map-shell">
+      <div class="world-map-grid">
+        <div class="world-map-canvas-wrap">
+          <canvas id="world-map-canvas" width="760" height="380"></canvas>
+          <div class="map-legend-overlay">
+            <span><i class="leg-dot player"></i> YOU</span>
+            <span><i class="leg-dot waypoint"></i> GPS WAYPOINT</span>
+            <span><i class="leg-dot mission"></i> MISSION</span>
+            <span><i class="leg-dot landmark"></i> LANDMARK</span>
+          </div>
+        </div>
+        <aside class="world-map-sidebar">
+          <div class="map-zone-card">
+            <span class="map-card-tag" id="map-poi-type">BIOME REGION</span>
+            <h3 id="map-poi-title">DOWNTOWN METROPOLIS</h3>
+            <p id="map-poi-desc">High-speed glass skyscraper avenues, illuminated intersections, and urban street racing circuits. Tap anywhere on the map to set a GPS route or fast-travel to a region below.</p>
+          </div>
+          <div class="map-zones-list" id="map-zone-buttons">
+            <button class="chip-btn active" data-map-zone="city" type="button">Downtown City</button>
+            <button class="chip-btn" data-map-zone="festival" type="button">Festival Grounds</button>
+            <button class="chip-btn" data-map-zone="countryside" type="button">Emerald Forest</button>
+            <button class="chip-btn" data-map-zone="highway" type="button">Mountain Pass</button>
+            <button class="chip-btn" data-map-zone="coast" type="button">Coastal Lakefront</button>
+            <button class="chip-btn" data-map-zone="industrial" type="button">Industrial Port</button>
+          </div>
+          <div class="map-action-stack">
+            <button id="btn-map-clear-wp" class="chip-btn" type="button">CLEAR GPS WAYPOINT</button>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <footer class="subscreen-footer">
+      <button id="btn-map-back" class="aaa-btn-secondary" type="button">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/></svg>
+        <span>BACK</span>
+      </button>
+      <button id="btn-map-fast-travel" class="aaa-btn-primary" type="button">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" fill="currentColor"/></svg>
+        <span>FAST TRAVEL &amp; DRIVE</span>
+      </button>
+    </footer>
+  </div>
+
+  <!-- ====================================================================
+       SCREEN 2D: OPEN-WORLD MISSIONS & FESTIVAL EVENTS HUB (Section 7)
+       ==================================================================== -->
+  <div id="missions-screen" class="aaa-screen settings-screen hidden">
+    <header class="subscreen-header">
+      <div class="subscreen-title-group">
+        <button id="btn-missions-home" class="header-icon-btn" title="Return" aria-label="Return">
+          <svg viewBox="0 0 24 24" width="22" height="22"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" fill="currentColor"/></svg>
+        </button>
+        <span class="header-slash"></span>
+        <h2>OPEN-WORLD MISSIONS &amp; FESTIVAL EVENTS</h2>
+      </div>
+      <div class="garage-currency-pill">
+        <span class="coin-badge">EVENTS</span>
+        <strong id="missions-progress-label">0 / 8 COMPLETED</strong>
+      </div>
+    </header>
+
+    <div class="settings-card-shell missions-shell">
+      <div id="missions-grid" class="missions-cards-grid"></div>
+    </div>
+
+    <footer class="subscreen-footer">
+      <button id="btn-missions-back" class="aaa-btn-secondary" type="button">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" fill="currentColor"/></svg>
+        <span>BACK</span>
+      </button>
+      <button id="btn-missions-freeroam" class="aaa-btn-primary" type="button">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+        <span>FREE-ROAM EXPLORATION</span>
+      </button>
+    </footer>
+  </div>
+
+  <!-- ====================================================================
+       MISSION COMPLETE / REWARD SUMMARY MODAL
+       ==================================================================== -->
+  <div id="mission-complete-modal" class="exit-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="mission-modal-title">
+    <div class="exit-modal-card info-modal-card">
+      <div class="rr-emblem-mini">
+        <span>RR</span>
+        <small>EVENT</small>
+      </div>
+      <h3 id="mission-modal-title">MISSION COMPLETE!</h3>
+      <p id="mission-modal-desc">You conquered the Horizon event and earned a podium payout.</p>
+      <div id="mission-modal-stats" class="info-badges-grid">
+        <div><span>EVENT</span><strong id="mm-stat-name">Horizon Sprint</strong></div>
+        <div><span>RESULT</span><strong id="mm-stat-time">00:48.2</strong></div>
+        <div><span>REWARD</span><strong id="mm-stat-reward">+15,000 CR</strong></div>
+        <div><span>TOTAL BALANCE</span><strong id="mm-stat-balance">140,000 CR</strong></div>
+      </div>
+      <div class="exit-modal-actions">
+        <button id="btn-mission-claim" class="aaa-btn-primary" style="width:100%;" type="button">CLAIM REWARD &amp; CONTINUE</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ====================================================================
        SCREEN 3: SETTINGS MENU (Part 4: Single REALISTIC Graphics Mode)
        ==================================================================== -->
@@ -487,7 +634,11 @@
             <div class="setting-line">
               <label>Graphics Engine Mode</label>
               <div class="btn-group segmented-group" id="preset-select">
-                <button class="chip-btn active" data-preset="realistic">REALISTIC (AUTO-ADAPTIVE PBR)</button>
+                <button class="chip-btn" data-preset="performance" type="button">Performance</button>
+                <button class="chip-btn" data-preset="balanced" type="button">Balanced</button>
+                <button class="chip-btn" data-preset="high" type="button">High</button>
+                <button class="chip-btn" data-preset="ultra" type="button">Ultra</button>
+                <button class="chip-btn active" data-preset="realistic" type="button">Realistic (Auto 4K)</button>
               </div>
             </div>
 
@@ -668,27 +819,32 @@
             <div class="setting-line">
               <label>Time of Day</label>
               <div class="btn-group segmented-group" id="time-select">
-                <button class="chip-btn" data-time="morning">Morning</button>
-                <button class="chip-btn active" data-time="sunset">Golden Hour</button>
-                <button class="chip-btn" data-time="night">Night</button>
+                <button class="chip-btn" data-time="sunrise" type="button">Sunrise</button>
+                <button class="chip-btn" data-time="morning" type="button">Daytime</button>
+                <button class="chip-btn active" data-time="sunset" type="button">Sunset</button>
+                <button class="chip-btn" data-time="night" type="button">Night</button>
               </div>
             </div>
 
             <div class="setting-line">
               <label>Dynamic Weather</label>
               <div class="btn-group segmented-group" id="weather-select">
-                <button class="chip-btn active" data-weather="clear">Clear</button>
-                <button class="chip-btn" data-weather="light_rain">Rain</button>
-                <button class="chip-btn" data-weather="heavy_rain">Storm</button>
+                <button class="chip-btn active" data-weather="clear" type="button">Clear</button>
+                <button class="chip-btn" data-weather="cloudy" type="button">Cloudy</button>
+                <button class="chip-btn" data-weather="light_rain" type="button">Rain</button>
+                <button class="chip-btn" data-weather="heavy_rain" type="button">Storm</button>
               </div>
             </div>
 
             <div class="setting-line">
               <label>Spawn Zone</label>
               <div class="btn-group segmented-group" id="spawn-select">
-                <button class="chip-btn active" data-spawn="city">City</button>
-                <button class="chip-btn" data-spawn="highway">Mountain</button>
-                <button class="chip-btn" data-spawn="coast">Coast</button>
+                <button class="chip-btn active" data-spawn="city" type="button">City</button>
+                <button class="chip-btn" data-spawn="festival" type="button">Festival</button>
+                <button class="chip-btn" data-spawn="countryside" type="button">Forest</button>
+                <button class="chip-btn" data-spawn="highway" type="button">Mountain</button>
+                <button class="chip-btn" data-spawn="coast" type="button">Coast</button>
+                <button class="chip-btn" data-spawn="industrial" type="button">Industrial</button>
               </div>
             </div>
           </div>
@@ -835,7 +991,9 @@
         <span class="event-credits-pill" id="hud-session-credits">125,000 CR</span>
       </div>
       <div id="hud-skill-toast" class="hud-skill-toast hidden">NEAR MISS +250 CR</div>
+      <button id="hud-mission-prompt" class="hud-mission-prompt hidden" type="button">START EVENT [F]</button>
     </div>
+    <div id="hud-countdown-overlay" class="hud-countdown-overlay hidden">3</div>
 
     <!-- Top-Left Circular Minimap with North Badge -->
     <div class="hud-top">
@@ -850,6 +1008,12 @@
       <!-- Top-Right Action Buttons & Telemetry Widget -->
       <div class="hud-top-right-stack">
         <div class="hud-top-right">
+          <button id="btn-hud-map" class="hud-circle-btn" title="Open World Map (M)" aria-label="Open World Map">
+            <svg viewBox="0 0 24 24" width="17" height="17">
+              <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z" fill="currentColor"/>
+            </svg>
+          </button>
+
           <button id="btn-hud-camera" class="hud-circle-btn" title="Switch Camera (C)" aria-label="Switch Camera">
             <svg viewBox="0 0 24 24" width="18" height="18">
               <path d="M9 3L7.17 5H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2h-3.17L15 3H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z" fill="currentColor"/>
