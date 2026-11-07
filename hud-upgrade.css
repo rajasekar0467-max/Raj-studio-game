@@ -696,3 +696,40 @@ body.controls-flipped .touch-controls-right {
     height: 46px;
   }
 }
+
+
+/* ==========================================================================
+   PHASE 2 ULTIMATE EVOLUTION HUD: MISSION PROMPT & COUNTDOWN OVERLAY
+   ========================================================================== */
+.hud-mission-prompt {
+  pointer-events: auto;
+  background: linear-gradient(135deg, #0d5ec4 0%, #168BFF 100%);
+  color: #FFFFFF;
+  border: 1px solid #7ee8ff;
+  border-radius: 999px;
+  padding: 5px 16px;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(22, 139, 255, 0.75);
+}
+
+.hud-countdown-overlay {
+  position: fixed;
+  top: 36%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 4.4rem;
+  font-weight: 900;
+  color: #FFFFFF;
+  text-shadow: 0 0 32px #168BFF, 0 6px 20px rgba(0, 0, 0, 0.85);
+  z-index: 25;
+  pointer-events: none;
+  letter-spacing: 0.06em;
+}
+
+.minimap-ring {
+  cursor: pointer;
+  pointer-events: auto;
+}
