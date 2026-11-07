@@ -1005,49 +1005,158 @@ class UltimateDriveSimulator {
   // --------------------------------------------------------------------------
   // PART 8: WEBGL 2 & GRAPHICS STABILITY (Multi-Stage Fallback + Diagnostics)
   // --------------------------------------------------------------------------
+  replaceCanvasElement() {
+    if (!this.canvas || !this.canvas.parentNode) return this.canvas;
+    const fresh = this.canvas.cloneNode(false);
+    this.canvas.parentNode.replaceChild(fresh, this.canvas);
+    this.canvas = fresh;
+    _els.set('game-canvas', fresh);
+    return fresh;
+  }
+
+  createSoftwareFallbackRenderer(canvas) {
+    const ctx = canvas.getContext('2d');
+    let width = window.innerWidth || 1024;
+    let height = window.innerHeight || 512;
+    canvas.width = width;
+    canvas.height = height;
+    const self = this;
+
+    return {
+      domElement: canvas,
+      isSoftwareFallback: true,
+      outputColorSpace: THREE.SRGBColorSpace,
+      toneMapping: THREE.ACESFilmicToneMapping,
+      toneMappingExposure: 1.0,
+      shadowMap: { enabled: false, type: THREE.PCFShadowMap, autoUpdate: false, needsUpdate: false },
+      capabilities: { isWebGL2: false, getMaxAnisotropy: () => 1 },
+      setPixelRatio() {},
+      setSize(w, h) {
+        width = Math.max(1, Math.floor(w));
+        height = Math.max(1, Math.floor(h));
+        canvas.width = width;
+        canvas.height = height;
+      },
+      render() {
+        if (!ctx) return;
+        const p = self.physics || { speedKmh: 0, distanceMeters: 0, steerAngle: 0 };
+        const tod = self.state ? self.state.timeOfDay : 'sunset';
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, height * 0.56);
+        if (tod === 'night') {
+          skyGrad.addColorStop(0, '#040711');
+          skyGrad.addColorStop(1, '#101d38');
+        } else if (tod === 'morning') {
+          skyGrad.addColorStop(0, '#2b5ea8');
+          skyGrad.addColorStop(1, '#b8d8f0');
+        } else {
+          skyGrad.addColorStop(0, '#1b294d');
+          skyGrad.addColorStop(0.65, '#7e4e60');
+          skyGrad.addColorStop(1, '#f59856');
+        }
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, width, height * 0.56);
+
+        const groundGrad = ctx.createLinearGradient(0, height * 0.54, 0, height);
+        groundGrad.addColorStop(0, '#141923');
+        groundGrad.addColorStop(1, '#090c12');
+        ctx.fillStyle = groundGrad;
+        ctx.fillRect(0, height * 0.54, width, height * 0.46);
+
+        const hx = width * 0.5 - (p.steerAngle || 0) * 140;
+        const hy = height * 0.54;
+        ctx.fillStyle = '#1d222c';
+        ctx.beginPath();
+        ctx.moveTo(hx - width * 0.05, hy);
+        ctx.lineTo(hx + width * 0.05, hy);
+        ctx.lineTo(width * 0.92, height);
+        ctx.lineTo(width * 0.08, height);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#e8e2cc';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([28, 28]);
+        ctx.lineDashOffset = -((p.distanceMeters || 0) * 12) % 56;
+        ctx.beginPath();
+        ctx.moveTo(hx, hy);
+        ctx.lineTo(width * 0.5, height);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        const cx = width * 0.5, cy = height * 0.75;
+        const cw = Math.min(260, width * 0.24), ch = cw * 0.48;
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + ch * 0.48, cw * 0.58, ch * 0.18, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = (self.state && self.state.paintHex) ? self.state.paintHex : '#0a2b6e';
+        ctx.beginPath();
+        ctx.roundRect(cx - cw * 0.5, cy - ch * 0.35, cw, ch * 0.72, 14);
+        ctx.fill();
+
+        ctx.fillStyle = '#0e1522';
+        ctx.beginPath();
+        ctx.roundRect(cx - cw * 0.36, cy - ch * 0.68, cw * 0.72, ch * 0.38, 10);
+        ctx.fill();
+
+        ctx.fillStyle = '#ff1e26';
+        ctx.fillRect(cx - cw * 0.46, cy - ch * 0.18, cw * 0.24, ch * 0.11);
+        ctx.fillRect(cx + cw * 0.22, cy - ch * 0.18, cw * 0.24, ch * 0.11);
+      },
+      dispose() {}
+    };
+  }
+
   initWebGL() {
-    const attempts = [
-      { label: 'WebGL 2 High-Performance AA', opts: { canvas: this.canvas, antialias: true, powerPreference: 'high-performance', alpha: false } },
-      { label: 'WebGL 2 Balanced No-AA', opts: { canvas: this.canvas, antialias: false, powerPreference: 'default', alpha: false } },
-      { label: 'WebGL Standard Fallback', opts: { canvas: this.canvas, antialias: false, alpha: false, failIfMajorPerformanceCaveat: false } }
+    const configs = [
+      { label: 'WebGL 2 High-Performance AA', ctxTypes: ['webgl2'], attrs: { antialias: true, powerPreference: 'high-performance', alpha: false } },
+      { label: 'WebGL 2 Balanced No-AA', ctxTypes: ['webgl2'], attrs: { antialias: false, powerPreference: 'default', alpha: false } },
+      { label: 'WebGL 1 / Compatible Fallback', ctxTypes: ['webgl2', 'webgl', 'experimental-webgl'], attrs: { antialias: false, alpha: false, failIfMajorPerformanceCaveat: false } }
     ];
 
     let lastErr = null;
-    for (const att of attempts) {
+    for (let i = 0; i < configs.length; i++) {
+      const cfg = configs[i];
+      if (i > 0) this.replaceCanvasElement();
       try {
-        this.renderer = new THREE.WebGLRenderer(att.opts);
-        this.glProfileLabel = att.label;
+        let gl = null;
+        for (const t of cfg.ctxTypes) {
+          try {
+            gl = this.canvas.getContext(t, cfg.attrs);
+            if (gl) break;
+          } catch (_) {}
+        }
+        if (gl) {
+          this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, context: gl, ...cfg.attrs });
+        } else {
+          this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, ...cfg.attrs });
+        }
+        this.glProfileLabel = cfg.label;
         break;
       } catch (err) {
         lastErr = err;
+        this.renderer = null;
       }
     }
 
     if (!this.renderer) {
-      const hasWGL2 = !!window.WebGL2RenderingContext;
-      const hasWGL1 = !!window.WebGLRenderingContext;
-      setText(UI.glErrorTitle, '3D Hardware Acceleration Unavailable');
-      setText(
-        UI.glErrorMsg,
-        'Your browser or device could not create a WebGL rendering context. Ensure Hardware Acceleration is enabled in browser settings and no other heavy 3D tabs are exhausting GPU memory.'
-      );
-      setText(
-        UI.glDiag,
-        `WebGL2 API: ${hasWGL2 ? 'Present' : 'Missing'} | WebGL1 API: ${hasWGL1 ? 'Present' : 'Missing'}\nDetails: ${lastErr && lastErr.message ? lastErr.message : String(lastErr)}`
-      );
-      show(UI.glError, true);
-      show(UI.loading, false);
-      throw lastErr || new Error('Unable to create WebGLRenderer');
+      console.warn('Hardware WebGL unavailable; activating Canvas2D Safe-Mode Fallback Renderer:', lastErr);
+      this.replaceCanvasElement();
+      this.renderer = this.createSoftwareFallbackRenderer(this.canvas);
+      this.glProfileLabel = 'Canvas2D Safe-Mode Fallback';
     }
 
-    const isWebGL2 = this.renderer.capabilities.isWebGL2;
+    const isWebGL2 = Boolean(this.renderer.capabilities && this.renderer.capabilities.isWebGL2);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = isWebGL2 ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
-    this.renderer.shadowMap.autoUpdate = false;
-    this.renderer.shadowMap.needsUpdate = true;
+    if (!this.renderer.isSoftwareFallback) {
+      this.renderer.shadowMap.enabled = true;
+      this.renderer.shadowMap.type = isWebGL2 ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+      this.renderer.shadowMap.autoUpdate = false;
+      this.renderer.shadowMap.needsUpdate = true;
+    }
 
     this.canvas.addEventListener('webglcontextlost', (e) => {
       e.preventDefault();
@@ -1077,8 +1186,16 @@ class UltimateDriveSimulator {
       3200
     );
 
-    const pmremGenerator = (this.pmrem = new THREE.PMREMGenerator(this.renderer));
-    this.scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+    if (!this.renderer.isSoftwareFallback) {
+      try {
+        const pmremGenerator = (this.pmrem = new THREE.PMREMGenerator(this.renderer));
+        this.scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+      } catch (_) {
+        this.pmrem = null;
+      }
+    } else {
+      this.pmrem = null;
+    }
 
     this.ambientLight = new THREE.HemisphereLight(0xddeeff, 0x1a1e24, 0.65);
     this.scene.add(this.ambientLight);
