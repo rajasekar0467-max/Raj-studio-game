@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { VEHICLE_CATALOG, buildProceduralBMW, buildRivalBMWCoupe, buildNPCPedestrian, loadExternalGLBVehicle } from './carBuilder.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { VEHICLE_CATALOG, buildProceduralBMW, buildRivalBMWCoupe, buildNPCPedestrian, loadBMWModelAsset } from './carBuilder.js';
 
 // ============================================================================
 // 0. UI ELEMENT IDS - synchronized with index.html (Phase 1 Foundation Overhaul)
@@ -92,7 +94,9 @@ const UI = {
   mmStatTime: 'mm-stat-time', mmStatReward: 'mm-stat-reward',
   mmStatBalance: 'mm-stat-balance', btnMissionClaim: 'btn-mission-claim',
   hudMapBtn: 'btn-hud-map', hudMissionPrompt: 'hud-mission-prompt',
-  hudCountdown: 'hud-countdown-overlay'
+  hudCountdown: 'hud-countdown-overlay',
+  newGame: 'btn-new-game', menuExit: 'btn-menu-exit',
+  mainMissionCard: 'hud-main-mission-card', missionObjective: 'hud-mission-objective'
 };
 
 const STORAGE_KEY = 'rr_studios_bmw_phase1_settings';
@@ -619,12 +623,14 @@ const GRAPHICS_PRESET_PROFILES = {
 };
 
 const OPEN_WORLD_LANDMARKS = [
-  { id: 'lm_city',       name: 'Centennial Glass Plaza',    zone: 'city',        t: 0.04, desc: 'Downtown luxury skyscraper district & central intersection.' },
-  { id: 'lm_festival',   name: 'Horizon Festival Mainstage', zone: 'festival',   t: 0.18, desc: 'Electric-blue neon festival arches, grandstands, and crowd arena.' },
-  { id: 'lm_forest',     name: 'Emerald Pine Village',      zone: 'countryside', t: 0.34, desc: 'Countryside timber cottages surrounded by dense pine woodland.' },
-  { id: 'lm_mountain',   name: 'Alpine Summit Tunnel',      zone: 'highway',     t: 0.56, desc: 'High-altitude mountain ridge pass and illuminated rock tunnel.' },
-  { id: 'lm_coast',      name: 'Azure Lakefront Pier',      zone: 'coast',       t: 0.74, desc: 'Panoramic coastal highway overlooking shimmering waters.' },
-  { id: 'lm_industrial', name: 'Port Gantry & Drift Yard',  zone: 'industrial',  t: 0.90, desc: 'Shipping container port, logistics warehouses, and drift pad.' }
+  { id: 'lm_city',       name: 'Palm City Downtown & Ferris Wheel', zone: 'city',        t: 0.04, desc: 'Neon-lit downtown skyscrapers, palm boulevards, and the purple Ferris Wheel.' },
+  { id: 'lm_festival',   name: 'Racing District & Stadium',         zone: 'festival',    t: 0.16, desc: 'Illuminated racing stadium arena, grandstands, and Race Start gantry.' },
+  { id: 'lm_airport',    name: 'Palm City International Airport',   zone: 'airport',     t: 0.27, desc: 'High-speed runway strip, aircraft hangars, and air traffic control tower.' },
+  { id: 'lm_forest',     name: 'Residential Hills & Park',          zone: 'countryside', t: 0.38, desc: 'Suburban residential avenues, green parks, and tree-lined roads.' },
+  { id: 'lm_mountain',   name: 'Mountain Drift Pass & Tunnel',      zone: 'highway',     t: 0.54, desc: 'High-altitude canyon drift switchbacks and illuminated mountain tunnel.' },
+  { id: 'lm_coast',      name: 'Ocean Beach & Coastal Bridge',      zone: 'coast',       t: 0.72, desc: 'Sunset beach highway, ocean waves, palm trees, and suspension bridge.' },
+  { id: 'lm_industrial', name: 'Industrial Zone & Harbor Port',     zone: 'industrial',  t: 0.86, desc: 'Shipping container harbor, gantry cranes, refineries, and drift yard.' },
+  { id: 'lm_west_hwy',   name: 'West Highway Corridor',             zone: 'west_hwy',    t: 0.95, desc: 'Long multi-lane freeway with overhead highway signs and speed traps.' }
 ];
 
 const MISSION_CATALOG = [
@@ -697,7 +703,7 @@ class UltimateDriveSimulator {
       garageTab: 'style',
       selectedVehicleId: 'm4_comp',
       previewVehicleId: 'm4_comp',
-      unlockedVehicles: ['m4_comp', 'm2_cs', 'm8_gt'],
+      unlockedVehicles: ['m4_comp', 'm3_sedan', 'm5_cs'],
       completedMissions: [],
       discoveredLandmarks: ['lm_city'],
       mpCallsign: 'RR_PILOT_01',
@@ -919,7 +925,7 @@ class UltimateDriveSimulator {
         this.state.previewVehicleId = d.selectedVehicleId;
       }
       if (Array.isArray(d.unlockedVehicles)) {
-        this.state.unlockedVehicles = Array.from(new Set(['m4_comp', 'm2_cs', 'm8_gt', ...d.unlockedVehicles]));
+        this.state.unlockedVehicles = Array.from(new Set(['m4_comp', 'm3_sedan', 'm5_cs', ...d.unlockedVehicles]));
       }
       if (Array.isArray(d.completedMissions)) this.state.completedMissions = d.completedMissions;
       if (Array.isArray(d.discoveredLandmarks)) this.state.discoveredLandmarks = Array.from(new Set(['lm_city', ...d.discoveredLandmarks]));
@@ -1708,32 +1714,18 @@ class UltimateDriveSimulator {
     ];
     for (let i = 0; i < count; i++) {
       const vt = vehicleTypes[i % vehicleTypes.length];
-      const group = new THREE.Group();
-      const mat = new THREE.MeshStandardMaterial({
-        color: trafficColors[i % trafficColors.length],
-        metalness: 0.75,
-        roughness: 0.22
+      const hexCol = '#' + trafficColors[i % trafficColors.length].toString(16).padStart(6, '0');
+      const { group, tailMat: tlMat } = buildRivalBMWCoupe(hexCol, {
+        width: vt.w,
+        length: vt.l,
+        beltY: 0.78,
+        roofY: 1.36 + (vt.type === 'suv' ? 0.14 : 0),
+        hoodZ: 0.92,
+        wsTopZ: 0.28,
+        roofEndZ: -0.72,
+        rgEndZ: -1.48,
+        flare: 0.085
       });
-      const chassis = new THREE.Mesh(new THREE.BoxGeometry(vt.w, vt.h, vt.l), mat);
-      chassis.position.y = vt.h * 0.5 + 0.22;
-      chassis.castShadow = true;
-      group.add(chassis);
-
-      const cabin = new THREE.Mesh(
-        new THREE.BoxGeometry(vt.cw, vt.ch, vt.cl),
-        new THREE.MeshStandardMaterial({ color: 0x0d131c, roughness: 0.08, metalness: 0.8 })
-      );
-      cabin.position.set(0, vt.h + vt.ch * 0.42 + 0.18, -0.15);
-      group.add(cabin);
-
-      const hl = new THREE.Mesh(new THREE.BoxGeometry(vt.w * 0.82, 0.11, 0.08), new THREE.MeshBasicMaterial({ color: 0xdff6ff }));
-      hl.position.set(0, vt.h * 0.55 + 0.22, vt.l * 0.5 + 0.01);
-      group.add(hl);
-
-      const tlMat = new THREE.MeshBasicMaterial({ color: 0xaa1111 });
-      const tl = new THREE.Mesh(new THREE.BoxGeometry(vt.w * 0.82, 0.12, 0.08), tlMat);
-      tl.position.set(0, vt.h * 0.62 + 0.22, -vt.l * 0.5 - 0.01);
-      group.add(tl);
 
       this.scene.add(group);
       this.traffic.push({
@@ -1868,20 +1860,19 @@ class UltimateDriveSimulator {
 
   loadGLB(url) {
     if (!url) return;
+    const clean = url.trim();
+    if (/\.(glb|gltf)(\?|$)/i.test(clean)) {
+      setText(UI.glbStatus, 'GLB/GLTF format is disabled. Use .OBJ + .MTL or .FBX BMW models.');
+      return;
+    }
     const b = $(UI.glbLoad);
-    const setStatus = (msg) => setText(UI.glbStatus, msg);
-    const flash = (t) => { if (!b) return; b.textContent = t; setTimeout(() => { b.textContent = 'Load GLB'; }, 2500); };
-    flash('Loading...');
-    setStatus(`Loading ${url}...`);
-    this.loadVehicleGLB(url).then((ok) => {
-      if (ok) {
-        flash('Loaded');
-        setStatus(`External GLB active: ${url}`);
-      } else {
-        loadExternalGLBVehicle(url, this.carRig, (st) => setStatus(st));
-        flash('Fallback');
-      }
-    });
+    setText(UI.glbStatus, 'Loading 3D BMW .OBJ / .FBX model...');
+    if (b) b.textContent = 'Loading...';
+    loadBMWModelAsset({ objFile: clean, mtlFile: clean.replace(/\.obj$/i, '.mtl') }, this.carRig, '');
+    setTimeout(() => {
+      if (b) b.textContent = 'Load OBJ / FBX';
+      setText(UI.glbStatus, '3D BMW model asset bound to PBR chassis.');
+    }, 900);
   }
 
   buildWeatherAndParticles() {
@@ -2128,7 +2119,7 @@ class UltimateDriveSimulator {
   }
 
   teleportToZone(zone) {
-    const mapT = { city: 0.02, festival: 0.18, countryside: 0.34, highway: 0.50, mountain: 0.50, coast: 0.74, industrial: 0.89 };
+    const mapT = { city: 0.02, festival: 0.16, airport: 0.27, countryside: 0.38, highway: 0.54, mountain: 0.54, coast: 0.72, industrial: 0.86, west_hwy: 0.95 };
     const t = mapT[zone] !== undefined ? mapT[zone] : ((this.zoneSpawn && this.zoneSpawn[zone]) ?? 0);
     const pt = this.roadCurve.getPointAt(t);
     const tan = this.roadCurve.getTangentAt(t);
@@ -2149,12 +2140,14 @@ class UltimateDriveSimulator {
   }
 
   zoneName(t) {
-    if (t < 0.14) return 'DOWNTOWN METROPOLIS';
-    if (t < 0.27) return 'HORIZON FESTIVAL GROUNDS';
-    if (t < 0.44) return 'EMERALD FOREST & VILLAGE';
-    if (t < 0.62) return 'ALPINE MOUNTAIN PASS';
-    if (t < 0.82) return 'AZURE COASTAL LAKEFRONT';
-    return 'INDUSTRIAL PORT & DRIFT YARD';
+    if (t < 0.12) return 'Palm City • Downtown';
+    if (t < 0.22) return 'Palm City • Racing District';
+    if (t < 0.32) return 'Palm City • Airport';
+    if (t < 0.44) return 'Palm City • Residential';
+    if (t < 0.62) return 'Palm City • Mountains';
+    if (t < 0.79) return 'Palm City • Ocean Beach';
+    if (t < 0.91) return 'Palm City • Industrial Port';
+    return 'Palm City • West Highway';
   }
 
   zoneShortName(t) {
@@ -2355,6 +2348,9 @@ class UltimateDriveSimulator {
     this.audio.playUIClick(false);
     this.state.cameraIndex = (this.state.cameraIndex + 1) % CAMERA_NAMES.length;
     setText(UI.camLabel, CAMERA_NAMES[this.state.cameraIndex]);
+    if (this.state.screen === 'DRIVING') {
+      show(UI.hud, true);
+    }
   }
 
   shiftGearManual(delta) {
@@ -3104,7 +3100,7 @@ class UltimateDriveSimulator {
     load('textures/interior_leather_512.png', 'Merino Leather Interior', (t) => { this.assets.leather = tile(t, 4, 4); this.applyCarTextures(); });
     load('textures/brushed_metal_512.png', 'CNC Brushed Alloys', (t) => { this.assets.metal = tile(t, 2, 2); this.applyCarTextures(); });
 
-    this.loadVehicleGLB(ASSET('vehicles/bmw_m4.glb'), new GLTFLoader());
+    // External .OBJ + .MTL BMW models are loaded via loadBMWModelAsset in carBuilder.js
 
     setTimeout(() => this.finishLoading(), 3500);
   }
@@ -3426,7 +3422,63 @@ class UltimateDriveSimulator {
       return this.worldChunks[idx].group;
     };
 
-    // 1. Horizon Festival Grounds (t = 0.14 .. 0.26): Electric-blue Festival Arches & Grandstands
+    // 0. Downtown Neon Purple Ferris Wheel & Highway Overhead Green Signs (NFS Heat / Most Wanted landmarks)
+    const fwGroup = new THREE.Group();
+    const fwRim = new THREE.Mesh(
+      new THREE.TorusGeometry(22, 0.55, 12, 36),
+      new THREE.MeshBasicMaterial({ color: 0x9d4edd })
+    );
+    const fwInner = new THREE.Mesh(
+      new THREE.TorusGeometry(16, 0.32, 10, 28),
+      new THREE.MeshBasicMaterial({ color: 0x00d2ff })
+    );
+    fwGroup.add(fwRim, fwInner);
+    for (let s = 0; s < 12; s++) {
+      const spoke = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.14, 0.14, 44, 6),
+        new THREE.MeshBasicMaterial({ color: 0xc77dff })
+      );
+      spoke.rotation.z = (s * Math.PI) / 6;
+      fwGroup.add(spoke);
+    }
+    const cityPt = this.roadCurve.getPointAt(0.05);
+    fwGroup.position.set(cityPt.x + 54, cityPt.y + 25, cityPt.z + 18);
+    fwGroup.rotation.y = 0.45;
+    this.ferrisWheel = fwGroup;
+    getChunkGroup(0.05).add(fwGroup);
+
+    // Palm City Airport Runway, Control Tower & Hangars (t = 0.24 .. 0.31)
+    const apPt = this.roadCurve.getPointAt(0.27);
+    const apTan = this.roadCurve.getTangentAt(0.27);
+    const apRight = new THREE.Vector3(-apTan.z, 0, apTan.x).normalize();
+    const towerGroup = new THREE.Group();
+    const towerShaft = new THREE.Mesh(
+      new THREE.CylinderGeometry(2.2, 2.8, 28, 12),
+      new THREE.MeshStandardMaterial({ color: 0xd0d8e4, roughness: 0.4 })
+    );
+    towerShaft.position.y = 14;
+    const towerCab = new THREE.Mesh(
+      new THREE.CylinderGeometry(4.6, 3.2, 4.5, 12),
+      new THREE.MeshBasicMaterial({ color: 0x168bff })
+    );
+    towerCab.position.y = 29.5;
+    towerGroup.add(towerShaft, towerCab);
+    towerGroup.position.copy(apPt).addScaledVector(apRight, this.halfRoad + 26);
+    getChunkGroup(0.27).add(towerGroup);
+
+    for (let h = 0; h < 3; h++) {
+      const ht = 0.25 + h * 0.02;
+      const hPt = this.roadCurve.getPointAt(ht);
+      const hangar = new THREE.Mesh(
+        new THREE.CylinderGeometry(9, 9, 18, 16, 1, false, 0, Math.PI).rotateZ(Math.PI / 2),
+        new THREE.MeshStandardMaterial({ color: 0x3b4859, metalness: 0.6, roughness: 0.35 })
+      );
+      hangar.position.copy(hPt).addScaledVector(apRight, -(this.halfRoad + 22));
+      hangar.position.y = hPt.y;
+      getChunkGroup(ht).add(hangar);
+    }
+
+    // 1. Racing District & Festival Grounds (t = 0.14 .. 0.24): Electric-blue & Purple Festival Arches
     const archGeo = new THREE.TorusGeometry(11.5, 0.38, 10, 32, Math.PI);
     const archMat = new THREE.MeshBasicMaterial({ color: 0x168bff });
     for (const ft of [0.16, 0.19, 0.22, 0.25]) {
@@ -3594,7 +3646,7 @@ class UltimateDriveSimulator {
   renderVehicleCarousel() {
     const strip = $(UI.vehicleCarousel);
     if (!strip) return;
-    const unlocked = this.state.unlockedVehicles || ['m4_comp', 'm2_cs', 'm8_gt'];
+    const unlocked = this.state.unlockedVehicles || ['m4_comp', 'm3_sedan', 'm5_cs'];
     const curId = this.state.previewVehicleId || this.state.selectedVehicleId;
 
     strip.innerHTML = VEHICLE_CATALOG.map((v) => {
@@ -4313,6 +4365,7 @@ class UltimateDriveSimulator {
 
     // 0. Update Open-World Chunk Streaming & Animated NPC Pedestrians
     if (this.frame % 10 === 0) this.updateWorldStreaming();
+    if (this.ferrisWheel) this.ferrisWheel.rotation.z += dt * 0.25;
     this.updateNPCs(dt);
 
     // 1. Countdown Overlay (3 - 2 - 1 - GO!)
@@ -4526,7 +4579,21 @@ class UltimateDriveSimulator {
   }
 
   bindPhase2UIEvents() {
-    // Main Menu OPEN WORLD & MISSIONS buttons
+    // Main Menu NEW GAME, EXIT, OPEN WORLD & MISSIONS buttons
+    on(UI.newGame, 'click', () => {
+      this.audio.playUIClick(true);
+      this.teleportToZone('city');
+      this.requestImmersiveFullscreen();
+      this.startGame(false);
+    });
+    on(UI.menuExit, 'click', () => {
+      this.audio.playUIClick(false);
+      this.openExitModal('APP');
+    });
+    on(UI.mainMissionCard, 'click', () => {
+      this.audio.playUIClick(true);
+      this.navigateTo('MISSIONS');
+    });
     on(UI.openMap, 'click', () => {
       this.audio.playUIClick(true);
       this.navigateTo('WORLD_MAP');
@@ -4629,7 +4696,7 @@ class UltimateDriveSimulator {
       gSel.addEventListener('click', (e) => {
         const previewId = this.state.previewVehicleId || this.state.selectedVehicleId;
         const spec = VEHICLE_CATALOG.find((v) => v.id === previewId) || VEHICLE_CATALOG[0];
-        const unlocked = this.state.unlockedVehicles || ['m4_comp', 'm2_cs', 'm8_gt'];
+        const unlocked = this.state.unlockedVehicles || ['m4_comp', 'm3_sedan', 'm5_cs'];
         if (!unlocked.includes(spec.id)) {
           e.stopImmediatePropagation();
           if (this.state.credits < spec.price) {
