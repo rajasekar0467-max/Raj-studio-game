@@ -138,8 +138,15 @@
         <span class="card-icon-box">
           <svg viewBox="0 0 24 24" width="22" height="22"><polygon points="7,5 19,12 7,19" fill="currentColor"/></svg>
         </span>
-        <span class="card-label" id="lbl-play-btn">PLAY</span>
-        <span class="card-tag">FULLSCREEN</span>
+        <span class="card-label" id="lbl-play-btn">SINGLE PLAYER</span>
+        <span class="card-tag">PALM CITY</span>
+      </button>
+
+      <button id="btn-new-game" class="aaa-menu-card">
+        <span class="card-icon-box">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" fill="currentColor"/></svg>
+        </span>
+        <span class="card-label">NEW GAME</span>
       </button>
 
       <button id="btn-continue-drive" class="aaa-menu-card hidden">
@@ -219,7 +226,16 @@
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="currentColor"/>
           </svg>
         </span>
-        <span class="card-label">ABOUT RR STUDIOS</span>
+        <span class="card-label">CREDITS &amp; ABOUT</span>
+      </button>
+
+      <button id="btn-menu-exit" class="aaa-menu-card">
+        <span class="card-icon-box">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path d="M10.09 15.59L11.5 17l5-5-5-5-1.41 1.41L12.67 11H3v2h9.67l-2.58 2.59zM19 3H5c-1.11 0-2 .9-2 2v4h2V5h14v14H5v-4H3v4c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" fill="currentColor"/>
+          </svg>
+        </span>
+        <span class="card-label">EXIT</span>
       </button>
     </nav>
 
@@ -341,8 +357,8 @@
         </div>
       </div>
       <div class="garage-glb-bar">
-        <input type="text" id="input-glb-url" placeholder="Optional custom GLB URL or assets/vehicles/bmw_m4.glb" />
-        <button id="btn-load-glb" class="chip-btn">Load GLB</button>
+        <input type="text" id="input-glb-url" placeholder="Optional custom .OBJ or .FBX URL (e.g. assets/vehicles/bmw_m4_competition.obj)" />
+        <button id="btn-load-glb" class="chip-btn">Load OBJ / FBX</button>
       </div>
       <small id="glb-status-msg" class="status-subtext">Drag horizontally on the car to orbit showroom camera.</small>
     </div>
@@ -374,7 +390,7 @@
       </button>
       <button id="btn-garage-select" class="aaa-btn-primary">
         <svg viewBox="0 0 24 24" width="18" height="18"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" fill="currentColor"/></svg>
-        <span>SELECT</span>
+        <span>DRIVE &raquo;</span>
       </button>
     </footer>
   </div>
@@ -508,12 +524,14 @@
             <p id="map-poi-desc">High-speed glass skyscraper avenues, illuminated intersections, and urban street racing circuits. Tap anywhere on the map to set a GPS route or fast-travel to a region below.</p>
           </div>
           <div class="map-zones-list" id="map-zone-buttons">
-            <button class="chip-btn active" data-map-zone="city" type="button">Downtown City</button>
-            <button class="chip-btn" data-map-zone="festival" type="button">Festival Grounds</button>
-            <button class="chip-btn" data-map-zone="countryside" type="button">Emerald Forest</button>
-            <button class="chip-btn" data-map-zone="highway" type="button">Mountain Pass</button>
-            <button class="chip-btn" data-map-zone="coast" type="button">Coastal Lakefront</button>
-            <button class="chip-btn" data-map-zone="industrial" type="button">Industrial Port</button>
+            <button class="chip-btn active" data-map-zone="city" type="button">Downtown Core</button>
+            <button class="chip-btn" data-map-zone="festival" type="button">Racing District</button>
+            <button class="chip-btn" data-map-zone="airport" type="button">Palm City Airport</button>
+            <button class="chip-btn" data-map-zone="countryside" type="button">Residential &amp; Park</button>
+            <button class="chip-btn" data-map-zone="highway" type="button">Mountain Drift</button>
+            <button class="chip-btn" data-map-zone="coast" type="button">Ocean Beach</button>
+            <button class="chip-btn" data-map-zone="industrial" type="button">Industrial &amp; Port</button>
+            <button class="chip-btn" data-map-zone="west_hwy" type="button">West Highway</button>
           </div>
           <div class="map-action-stack">
             <button id="btn-map-clear-wp" class="chip-btn" type="button">CLEAR GPS WAYPOINT</button>
@@ -995,14 +1013,29 @@
     </div>
     <div id="hud-countdown-overlay" class="hud-countdown-overlay hidden">3</div>
 
-    <!-- Top-Left Circular Minimap with North Badge -->
+    <!-- Top-Left RR STUDIOS Crown Branding & Active Main Mission Card + Circular Minimap -->
+    <div class="hud-top-left-brand">
+      <div class="hud-rr-logo">
+        <span class="crown-icon" aria-hidden="true">&#9819;</span>
+        <strong><i>RR</i> STUDIOS</strong>
+        <small>THE ULTIMATE DRIVE</small>
+      </div>
+      <div class="hud-main-mission-card" id="hud-main-mission-card">
+        <span class="mission-star-badge">&#9733;</span>
+        <div class="mission-card-copy">
+          <small>MAIN MISSION</small>
+          <strong id="hud-mission-objective">Reach the Downtown Racing Zone</strong>
+        </div>
+      </div>
+    </div>
+
     <div class="hud-top">
       <div class="minimap-wrapper">
         <div class="minimap-ring">
           <span class="minimap-north">N</span>
           <canvas id="minimap-canvas" width="136" height="136"></canvas>
         </div>
-        <div id="zone-label">DOWNTOWN CORE</div>
+        <div id="zone-label">Palm City</div>
       </div>
 
       <!-- Top-Right Action Buttons & Telemetry Widget -->
