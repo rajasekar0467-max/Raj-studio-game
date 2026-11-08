@@ -1,0 +1,41 @@
+# RR STUDIOS — Genuine 3D Automotive Material Library (BMW M3 Competition Sedan (G80))
+newmtl BodyPaint
+Ka 0.070 0.360 0.220
+Kd 0.070 0.360 0.220
+Ks 0.950 0.950 0.950
+Ns 600.0
+d 1.0
+
+newmtl CarbonFiber
+Ka 0.080 0.090 0.110
+Kd 0.110 0.120 0.140
+Ks 0.650 0.680 0.720
+Ns 320.0
+map_Kd ../textures/carbon_fiber_512.png
+
+newmtl GlassWindow
+Ka 0.040 0.070 0.110
+Kd 0.060 0.100 0.150
+Ks 0.980 0.990 1.000
+Ns 800.0
+d 0.62
+
+newmtl KidneyGrille
+Ka 0.050 0.055 0.065
+Kd 0.070 0.075 0.090
+Ks 0.850 0.880 0.920
+Ns 400.0
+
+newmtl HeadlightDRL
+Ka 0.850 0.940 1.000
+Kd 0.920 0.970 1.000
+Ke 0.880 0.950 1.000
+Ks 1.000 1.000 1.000
+Ns 500.0
+
+newmtl TaillightLED
+Ka 0.650 0.020 0.040
+Kd 0.900 0.050 0.080
+Ke 0.950 0.060 0.080
+Ks 0.900 0.300 0.300
+Ns 400.0
