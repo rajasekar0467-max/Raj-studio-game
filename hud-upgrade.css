@@ -733,3 +733,150 @@ body.controls-flipped .touch-controls-right {
   cursor: pointer;
   pointer-events: auto;
 }
+
+
+/* ==========================================================================
+   PROMPT 1: NFS HEAT / MOST WANTED HUD & CAMERA UI VISIBILITY FIX
+   ========================================================================== */
+#game-canvas {
+  z-index: 1 !important;
+}
+
+/* Guarantee UI NEVER disappears across any camera mode (Normal, Close, Front, Side, Interior) */
+#driving-hud:not(.hidden) {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 45 !important;
+}
+
+#driving-hud:not(.hidden) .hud-top,
+#driving-hud:not(.hidden) .hud-top-left-brand,
+#driving-hud:not(.hidden) .minimap-wrapper,
+#driving-hud:not(.hidden) .hud-top-right-stack,
+#driving-hud:not(.hidden) .instrument-cluster,
+#driving-hud:not(.hidden) .touch-controls-left,
+#driving-hud:not(.hidden) .touch-controls-right,
+#driving-hud:not(.hidden) .hud-event-banner {
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 46 !important;
+}
+
+/* Top-Left Crowned RR STUDIOS Brand & Main Mission Card */
+.hud-top-left-brand {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(14px, env(safe-area-inset-left));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: none;
+  z-index: 46;
+}
+
+.hud-rr-logo {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.85);
+}
+
+.hud-rr-logo .crown-icon {
+  color: #ffd166;
+  font-size: 0.85rem;
+  margin-bottom: -2px;
+}
+
+.hud-rr-logo strong {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.06em;
+}
+
+.hud-rr-logo strong i {
+  color: #9d4edd;
+  font-style: italic;
+}
+
+.hud-rr-logo small {
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  color: #cbd5e1;
+}
+
+.hud-main-mission-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(90deg, rgba(17, 23, 34, 0.90) 0%, rgba(21, 29, 41, 0.72) 100%);
+  border-left: 3px solid #9d4edd;
+  border-radius: 8px;
+  padding: 5px 11px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.mission-star-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #7b2cbf, #168bff);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.76rem;
+}
+
+.mission-card-copy {
+  display: flex;
+  flex-direction: column;
+}
+
+.mission-card-copy small {
+  font-size: 0.54rem;
+  font-weight: 900;
+  color: #c77dff;
+  letter-spacing: 0.1em;
+}
+
+.mission-card-copy strong {
+  font-size: 0.70rem;
+  color: #ffffff;
+}
+
+/* Move Circular Minimap cleanly below Top-Left Mission card */
+.hud-top .minimap-wrapper {
+  margin-top: 86px;
+}
+
+.minimap-ring {
+  border: 2px solid rgba(157, 78, 221, 0.75) !important;
+  box-shadow: 0 0 18px rgba(22, 139, 255, 0.45), inset 0 0 12px rgba(123, 44, 191, 0.35) !important;
+}
+
+#zone-label {
+  font-style: italic;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 0 0 10px rgba(157, 78, 221, 0.8);
+}
+
+/* Circular Neon Speedometer Gauge positioned so center car view is 100% unobstructed */
+.instrument-cluster {
+  border-radius: 50% !important;
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .hud-top-left-brand {
+    transform: scale(0.84);
+    transform-origin: top left;
+  }
+  .hud-top .minimap-wrapper {
+    margin-top: 68px;
+  }
+}
